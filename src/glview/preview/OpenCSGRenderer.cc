@@ -121,6 +121,10 @@ void OpenCSGRenderer::draw(bool showedges, const ShaderUtils::ShaderInfo *shader
   bool enable_shader =
     shaderinfo && ((shaderinfo->type == ShaderUtils::ShaderType::EDGE_RENDERING && showedges) ||
                    shaderinfo->type == ShaderUtils::ShaderType::SELECT_RENDERING);
+  const bool is_select_rendering =
+    shaderinfo && shaderinfo->type == ShaderUtils::ShaderType::SELECT_RENDERING;
+  const GLint frag_idcolor_uniform =
+    is_select_rendering ? shaderinfo->uniforms.at("frag_idcolor") : -1;
 
   for (const auto& product : vertex_state_containers_) {
     if (product->primitives().size() > 1) {
@@ -141,14 +145,14 @@ void OpenCSGRenderer::draw(bool showedges, const ShaderUtils::ShaderInfo *shader
 
     for (const auto& vertex_state : product->states()) {
       // Specify ID color if we're using select rendering
-      if (shaderinfo && shaderinfo->type == ShaderUtils::ShaderType::SELECT_RENDERING) {
+      if (is_select_rendering) {
         if (const auto csg_vs = std::dynamic_pointer_cast<OpenCSGVertexState>(vertex_state)) {
           GL_TRACE("glUniform3f(%d, %f, %f, %f)",
-                   shaderinfo->uniforms.at("frag_idcolor") %
+                   frag_idcolor_uniform %
                      (((csg_vs->csgObjectIndex() >> 0) & 0xff) / 255.0f) %
                      (((csg_vs->csgObjectIndex() >> 8) & 0xff) / 255.0f) %
                      (((csg_vs->csgObjectIndex() >> 16) & 0xff) / 255.0f));
-          GL_CHECKD(glUniform3f(shaderinfo->uniforms.at("frag_idcolor"),
+          GL_CHECKD(glUniform3f(frag_idcolor_uniform,
                                 ((csg_vs->csgObjectIndex() >> 0) & 0xff) / 255.0f,
                                 ((csg_vs->csgObjectIndex() >> 8) & 0xff) / 255.0f,
                                 ((csg_vs->csgObjectIndex() >> 16) & 0xff) / 255.0f));

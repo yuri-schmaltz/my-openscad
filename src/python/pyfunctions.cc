@@ -1055,6 +1055,7 @@ PyObject *python_mesh_core(PyObject *obj, bool tessellate)
   Tree tree(child, "");
   GeometryEvaluator geomevaluator(tree);
   std::shared_ptr<const Geometry> geom = geomevaluator.evaluateGeometry(*tree.root(), true);
+  geomevaluator.printCacheTelemetry();
   std::shared_ptr<const PolySet> ps = PolySetUtils::getGeometryAsPolySet(geom);
 
   if (ps != nullptr) {

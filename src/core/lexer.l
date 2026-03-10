@@ -44,8 +44,8 @@ namespace fs = std::filesystem;
 
 std::string stringcontents;
 int lexerget_lineno(void);
-extern const char *parser_input_buffer;
-extern SourceFile *rootfile;
+extern thread_local const char *parser_input_buffer;
+extern thread_local SourceFile *rootfile;
 
 #define YY_INPUT(buf,result,max_size) {   \
   if (yyin && yyin != stdin) {            \

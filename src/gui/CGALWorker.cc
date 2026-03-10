@@ -1,5 +1,6 @@
 #include "gui/CGALWorker.h"
 
+#include <QElapsedTimer>
 #include <QThread>
 #include <exception>
 #include <memory>
@@ -49,10 +50,14 @@ void CGALWorker::work()
 #ifdef ENABLE_PYTHON
   python_lock();
 #endif
+  QElapsedTimer evalTimer;
+  evalTimer.start();
   std::shared_ptr<const Geometry> root_geom;
   try {
     GeometryEvaluator evaluator(*this->tree);
     root_geom = evaluator.evaluateGeometry(*this->tree->root(), true);
+    LOG("Perf: evaluateGeometry(worker) took %1$d ms", static_cast<int>(evalTimer.elapsed()));
+    evaluator.printCacheTelemetry();
 
 #ifdef ENABLE_MANIFOLD
     if (auto manifold = std::dynamic_pointer_cast<const ManifoldGeometry>(root_geom)) {

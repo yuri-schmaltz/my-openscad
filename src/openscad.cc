@@ -490,6 +490,7 @@ int do_export(const CommandLine& cmd, const RenderVariables& render_variables, F
 
       constexpr bool allownef = true;
       root_geom = geomevaluator.evaluateGeometry(*tree.root(), allownef);
+      geomevaluator.printCacheTelemetry();
       if (!root_geom) root_geom = std::make_shared<PolySet>(3);
       if (cmd.viewOptions.renderer == RenderType::BACKEND_SPECIFIC && root_geom->getDimension() == 3) {
         if (auto geomlist = std::dynamic_pointer_cast<const GeometryList>(root_geom)) {

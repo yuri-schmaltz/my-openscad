@@ -7,6 +7,7 @@
 #include <QObject>
 #include <QPalette>
 #include <QResizeEvent>
+#include <QSignalBlocker>
 #include <QString>
 #include <QWidget>
 #include <cfloat>
@@ -128,7 +129,16 @@ void ViewportControl::resizeEvent(QResizeEvent *event)
 
 void ViewportControl::cameraChanged()
 {
-  if (!inputMutex.try_lock()) return;
+  std::lock_guard<std::mutex> lock(inputMutex);
+
+  const QSignalBlocker b1(doubleSpinBox_tx);
+  const QSignalBlocker b2(doubleSpinBox_ty);
+  const QSignalBlocker b3(doubleSpinBox_tz);
+  const QSignalBlocker b4(doubleSpinBox_rx);
+  const QSignalBlocker b5(doubleSpinBox_ry);
+  const QSignalBlocker b6(doubleSpinBox_rz);
+  const QSignalBlocker b7(doubleSpinBox_d);
+  const QSignalBlocker b8(doubleSpinBox_fov);
 
   const auto vpt = qglview->cam.getVpt();
   doubleSpinBox_tx->setValue(vpt.x());
@@ -144,12 +154,11 @@ void ViewportControl::cameraChanged()
 
   doubleSpinBox_fov->setValue(qglview->cam.fov);
   updateViewportControlHints();
-  inputMutex.unlock();
 }
 
 void ViewportControl::updateCamera()
 {
-  if (!inputMutex.try_lock()) return;
+  std::lock_guard<std::mutex> lock(inputMutex);
 
   // viewport translation
   qglview->cam.setVpt(doubleSpinBox_tx->value(), doubleSpinBox_ty->value(), doubleSpinBox_tz->value());
@@ -167,7 +176,6 @@ void ViewportControl::updateCamera()
 
   qglview->update();
   updateViewportControlHints();
-  inputMutex.unlock();
 }
 
 void ViewportControl::updateViewportControlHints()
@@ -217,7 +225,7 @@ void ViewportControl::resizeToRatio()
 
 void ViewportControl::viewResized()
 {
-  if (!resizeMutex.try_lock()) return;
+  std::lock_guard<std::mutex> lock(resizeMutex);
 
   this->maxW = qglview->size().rwidth();
   this->maxH = qglview->size().rheight();
@@ -225,19 +233,18 @@ void ViewportControl::viewResized()
   if (checkBoxAspecRatioLock->checkState() == Qt::Checked) {
     resizeToRatio();
   } else {
+    const QSignalBlocker b1(spinBoxWidth);
+    const QSignalBlocker b2(spinBoxHeight);
     spinBoxWidth->setValue(this->maxW);
     spinBoxHeight->setValue(this->maxH);
   }
-  resizeMutex.unlock();
 }
 
 void ViewportControl::requestResize()
 {
-  if (!resizeMutex.try_lock()) return;
+  std::lock_guard<std::mutex> lock(resizeMutex);
 
   resizeToRatio();
-
-  resizeMutex.unlock();
 }
 
 bool ViewportControl::focusNextPrevChild(bool next)

@@ -18,7 +18,7 @@ cmake_policy(SET CMP0072 NEW)
 #`target_link_libraries()` allows use with targets in other directories.
 cmake_policy(SET CMP0079 NEW)
 # Let parent project set child project options (used to skip python lookup from manifold & force TBB)
-cmake_policy(SET CMP0079 NEW)
+cmake_policy(SET CMP0077 NEW)
 if(POLICY CMP0082) # Since CMake 3.14
   # Install rules from add_subdirectory() calls are interleaved with those in caller.
   cmake_policy(SET CMP0082 NEW)
@@ -1001,6 +1001,7 @@ set(CORE_SOURCES
   src/core/Children.cc
   src/core/ColorNode.cc
   src/core/ColorUtil.cc
+  src/core/CompileOrchestrator.cc
   src/core/Context.cc
   src/core/ContextFrame.cc
   src/core/ContextMemoryManager.cc

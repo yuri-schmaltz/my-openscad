@@ -6,7 +6,7 @@
 
 namespace fs = std::filesystem;
 
-extern int parser_error_pos;
+extern thread_local int parser_error_pos;
 
 /**
  * Initialize library path.

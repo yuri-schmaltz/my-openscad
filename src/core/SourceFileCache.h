@@ -22,6 +22,7 @@ public:
                       SourceFile *& sourceFile);
   SourceFile *lookup(const std::string& filename);
   size_t size() const { return this->entries.size(); }
+  void printSummary() const;
   void clear();
   static void clear_markers();
 
@@ -39,4 +40,8 @@ private:
     std::time_t includes_mtime{};  // time the includes last changed
   };
   std::unordered_map<std::string, cache_entry> entries;
+  size_t cache_hits{0};
+  size_t reparses{0};
+  size_t stat_misses{0};
+  size_t parse_failures{0};
 };

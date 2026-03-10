@@ -49,7 +49,10 @@ std::time_t SourceFileCache::process(const std::string& mainFile, const std::str
   bool valid = (StatCache::stat(filename, st) == 0);
 
   // If file isn't there, just return and let the cache retain the old file
-  if (!valid) return 0;
+  if (!valid) {
+    this->stat_misses++;
+    return 0;
+  }
 
   // If the file is present, we'll always cache some result
   std::string cache_id = str(boost::format("%x.%x") % st.st_mtime % st.st_size);
@@ -69,12 +72,14 @@ std::time_t SourceFileCache::process(const std::string& mainFile, const std::str
     // Files should only be reparsed if the cache ID changed
     if (cacheEntry.cache_id == cache_id) {
       shouldParse = false;
+      this->cache_hits++;
       // Reparse if includes changed
       if (cacheEntry.parsed_file) {
         std::time_t mtime = cacheEntry.parsed_file->includesChanged();
         if (mtime > cacheEntry.includes_mtime) {
           cacheEntry.includes_mtime = mtime;
           shouldParse = true;
+          if (this->cache_hits > 0) this->cache_hits--;
         }
       }
     }
@@ -87,6 +92,7 @@ std::time_t SourceFileCache::process(const std::string& mainFile, const std::str
 
   // If cache lookup failed (non-existing or old timestamp), parse file
   if (shouldParse) {
+    this->reparses++;
 #ifdef DEBUG
     if (found) {
       PRINTDB("Recompiling cached library: %s (%s)", filename % cache_id);
@@ -110,6 +116,7 @@ std::time_t SourceFileCache::process(const std::string& mainFile, const std::str
     delete cacheEntry.parsed_file;
     file =
       parse(cacheEntry.parsed_file, text, filename, mainFile, false) ? cacheEntry.parsed_file : nullptr;
+    if (!file) this->parse_failures++;
     PRINTDB("parsed file: %s", filename);
     cacheEntry.file = file;
     cacheEntry.cache_id = cache_id;
@@ -128,6 +135,16 @@ std::time_t SourceFileCache::process(const std::string& mainFile, const std::str
 void SourceFileCache::clear()
 {
   this->entries.clear();
+  this->cache_hits = 0;
+  this->reparses = 0;
+  this->stat_misses = 0;
+  this->parse_failures = 0;
+}
+
+void SourceFileCache::printSummary() const
+{
+  LOG("SourceFileCache summary: entries=%1$d cache_hits=%2$d reparses=%3$d stat_misses=%4$d parse_failures=%5$d",
+      this->entries.size(), this->cache_hits, this->reparses, this->stat_misses, this->parse_failures);
 }
 
 SourceFile *SourceFileCache::lookup(const std::string& filename)

@@ -34,7 +34,6 @@
 #include <utility>
 #include <vector>
 
-#include "core/Context.h"
 #include "core/SourceFile.h"
 #include "glview/Camera.h"
 #include "glview/Renderer.h"
@@ -43,8 +42,8 @@
 Q_IMPORT_PLUGIN(QSvgPlugin)
 #endif
 
-class BuiltinContext;
 class CGALWorker;
+class CompileOrchestrator;
 class CSGNode;
 class CSGProducts;
 class FontListDialog;
@@ -213,7 +212,6 @@ public:
 private:
   [[nodiscard]] QString getCurrentFileName() const;
 
-  void setRenderVariables(ContextHandle<BuiltinContext>& context);
   void updateCompileResult();
   void compile(bool reload, bool forcedone = false);
   void compileCSG();
@@ -459,6 +457,7 @@ private:
   std::unordered_map<QString, QString> exportPaths;  // for each file type, where it was exported to last
   QString exportPath(
     const QString& suffix);    // look up the last export path and generate one if not found
+  int currentParserErrorPos{-1};
   int lastParserErrorPos{-1};  // last highlighted error position
   int tabCount = 0;
   ExportPdfPaperSize sizeString2Enum(const QString& current);
@@ -467,6 +466,7 @@ private:
   QMenu *navigationMenu{nullptr};
   QSoundEffect *renderCompleteSoundEffect;
   std::vector<std::unique_ptr<QTemporaryFile>> allTempFiles;
+  std::unique_ptr<CompileOrchestrator> compileOrchestrator;
 
   void resetMeasurementsState(bool enable, const QString& tooltipMessage);
   QActionGroup *measurementGroup;

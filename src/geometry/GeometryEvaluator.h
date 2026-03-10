@@ -26,6 +26,7 @@ public:
   GeometryEvaluator(const Tree& tree);
 
   std::shared_ptr<const Geometry> evaluateGeometry(const AbstractNode& node, bool allownef);
+  void printCacheTelemetry() const;
 
   Response visit(State& state, const AbstractNode& node) override;
   Response visit(State& state, const ColorNode& node) override;
@@ -51,6 +52,17 @@ public:
   [[nodiscard]] const Tree& getTree() const { return this->tree; }
 
 private:
+  struct CacheTelemetryEntry {
+    size_t geometry_hits{0};
+    size_t cgal_hits{0};
+    size_t misses{0};
+    size_t geometry_inserts{0};
+    size_t cgal_inserts{0};
+
+    [[nodiscard]] size_t totalLookups() const { return geometry_hits + cgal_hits + misses; }
+    [[nodiscard]] size_t totalHits() const { return geometry_hits + cgal_hits; }
+  };
+
   class ResultObject
   {
   public:
@@ -127,6 +139,7 @@ private:
   Response lazyEvaluateRootNode(State& state, const AbstractNode& node);
 
   std::map<int, Geometry::Geometries> visitedchildren;
+  std::map<std::string, CacheTelemetryEntry> cacheTelemetry;
   const Tree& tree;
   std::shared_ptr<const Geometry> root;
 

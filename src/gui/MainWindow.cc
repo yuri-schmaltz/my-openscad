@@ -88,11 +88,9 @@
 #include <vector>
 
 #include "core/AST.h"
-#include "core/BuiltinContext.h"
 #include "core/Builtins.h"
 #include "core/CSGNode.h"
-#include "core/Context.h"
-#include "core/EvaluationSession.h"
+#include "core/CompileOrchestrator.h"
 #include "core/Expression.h"
 #include "core/RenderVariables.h"
 #include "core/ScopeContext.h"
@@ -104,13 +102,11 @@
 #include "core/progress.h"
 #include "geometry/Geometry.h"
 #include "geometry/GeometryCache.h"
-#include "geometry/GeometryEvaluator.h"
 #include "glview/PolySetRenderer.h"
 #include "glview/RenderSettings.h"
 #if not defined(USE_POLYSET_FOR_CGAL)
 #include "glview/cgal/CGALRenderer.h"
 #endif
-#include "glview/preview/CSGTreeNormalizer.h"
 #include "glview/preview/ThrownTogetherRenderer.h"
 #include "gui/AboutDialog.h"
 #include "gui/CGALWorker.h"
@@ -158,7 +154,6 @@
 #ifdef ENABLE_OPENCSG
 #include <opencsg.h>
 
-#include "core/CSGTreeEvaluator.h"
 #include "glview/preview/OpenCSGRenderer.h"
 #endif
 #ifdef OPENSCAD_UPDATER
@@ -729,10 +724,10 @@ void MainWindow::compile(bool reload, bool forcedone)
       didcompile = true;
     }
 
-    if (didcompile && parser_error_pos != lastParserErrorPos) {
+    if (didcompile && currentParserErrorPos != lastParserErrorPos) {
       if (lastParserErrorPos >= 0) emit unhighlightLastError();
-      if (parser_error_pos >= 0) emit highlightError(parser_error_pos);
-      lastParserErrorPos = parser_error_pos;
+      if (currentParserErrorPos >= 0) emit highlightError(currentParserErrorPos);
+      lastParserErrorPos = currentParserErrorPos;
     }
 
     if (this->rootFile) {
@@ -740,6 +735,7 @@ void MainWindow::compile(bool reload, bool forcedone)
       if (mtime > this->depsMTime) {
         this->depsMTime = mtime;
         LOG("Used file cache size: %1$d files", SourceFileCache::instance()->size());
+        SourceFileCache::instance()->printSummary();
         didcompile = true;
       }
     }
@@ -830,7 +826,10 @@ void MainWindow::compileDone(bool didchange)
   try {
     const char *callslot;
     if (didchange) {
+      QElapsedTimer instantiateTimer;
+      instantiateTimer.start();
       instantiateRoot();
+      LOG("Perf: instantiateRoot took %1$d ms", static_cast<int>(instantiateTimer.elapsed()));
       updateCompileResult();
       callslot = afterCompileSlot;
     } else {
@@ -857,14 +856,19 @@ void MainWindow::compileEnded()
 #ifdef ENABLE_GUI_TESTS
 std::shared_ptr<AbstractNode> MainWindow::instantiateRootFromSource(SourceFile *file)
 {
-  EvaluationSession session{file->getFullpath()};
-  ContextHandle<BuiltinContext> builtin_context{Context::create<BuiltinContext>(&session)};
-  setRenderVariables(builtin_context);
+  if (!file) return nullptr;
 
-  std::shared_ptr<const FileContext> file_context;
-  std::shared_ptr<AbstractNode> node = this->rootFile->instantiate(*builtin_context, &file_context);
+  const RenderVariables renderVariables = {
+    .preview = this->isPreview,
+    .time = this->animateWidget->getAnimTval(),
+    .camera = qglview->cam,
+  };
 
-  return node;
+  const auto fileOwner = std::shared_ptr<SourceFile>(file, [](SourceFile *) {});
+  const auto instantiated = compileOrchestrator->instantiateRoot(
+    fileOwner, std::filesystem::path(file->getFullpath()).parent_path().string(), renderVariables);
+
+  return instantiated.rootNode;
 }
 #endif  // ifdef ENABLE_GUI_TESTS
 
@@ -899,42 +903,41 @@ void MainWindow::instantiateRoot()
     LOG("Compiling design (CSG Tree generation)...");
     this->processEvents();
 
-    AbstractNode::resetIndexCounter();
-
-    EvaluationSession session{doc.parent_path().string()};
-    ContextHandle<BuiltinContext> builtin_context{Context::create<BuiltinContext>(&session)};
-    setRenderVariables(builtin_context);
-
-    std::shared_ptr<const FileContext> file_context;
 #ifdef ENABLE_PYTHON
-    if (python_result_node != NULL && this->python_active) this->absoluteRootNode = python_result_node;
-    else
+    if (python_result_node != NULL && this->python_active) {
+      this->absoluteRootNode = python_result_node;
+      this->rootNode = this->absoluteRootNode;
+      this->tree.setRoot(this->rootNode);
+    } else
 #endif
-      this->absoluteRootNode = this->rootFile->instantiate(*builtin_context, &file_context);
-    if (file_context) {
-      this->qglview->cam.updateView(file_context, false);
-      viewportControlWidget->cameraChanged();
-    }
+    {
+      const RenderVariables renderVariables = {
+        .preview = this->isPreview,
+        .time = this->animateWidget->getAnimTval(),
+        .camera = qglview->cam,
+      };
+      const auto instantiated =
+        compileOrchestrator->instantiateRoot(this->rootFile, doc.parent_path().string(), renderVariables);
 
-    if (this->absoluteRootNode) {
-      // Do we have an explicit root node (! modifier)?
-      const Location *nextLocation = nullptr;
-      if (!(this->rootNode = find_root_tag(this->absoluteRootNode, &nextLocation))) {
-        this->rootNode = this->absoluteRootNode;
+      this->absoluteRootNode = instantiated.absoluteRootNode;
+      this->rootNode = instantiated.rootNode;
+
+      if (instantiated.fileContext) {
+        this->qglview->cam.updateView(instantiated.fileContext, false);
+        viewportControlWidget->cameraChanged();
       }
-      if (nextLocation) {
-        LOG(message_group::NONE, *nextLocation, builtin_context->documentRoot(),
+
+      if (instantiated.extraRootLocation.has_value()) {
+        LOG(message_group::NONE, *instantiated.extraRootLocation, instantiated.documentRoot,
             "More than one Root Modifier (!)");
       }
 
-      // FIXME: Consider giving away ownership of root_node to the Tree, or use reference counted
-      // pointers
       this->tree.setRoot(this->rootNode);
     }
   }
 
   if (!this->rootNode) {
-    if (parser_error_pos < 0) {
+    if (currentParserErrorPos < 0) {
       LOG(message_group::Error, "Compilation failed! (no top level object found)");
     } else {
       LOG(message_group::Error, "Compilation failed!");
@@ -952,6 +955,9 @@ void MainWindow::compileCSG()
 {
   OpenSCAD::hardwarnings = GlobalPreferences::inst()->getValue("advanced/enableHardwarnings").toBool();
   try {
+    QElapsedTimer csgTimer;
+    csgTimer.start();
+    bool openCsgDisabledByLimit = false;
     assert(this->rootNode);
     LOG("Compiling design (CSG Products generation)...");
     this->processEvents();
@@ -960,18 +966,22 @@ void MainWindow::compileCSG()
     this->progresswidget = new ProgressWidget(this);
     connect(this->progresswidget, &ProgressWidget::requestShow, this, &MainWindow::showProgress);
 
-    GeometryEvaluator geomevaluator(this->tree);
-#ifdef ENABLE_OPENCSG
-    CSGTreeEvaluator csgrenderer(this->tree, &geomevaluator);
-#endif
-
     if (!isClosing) progress_report_prep(this->rootNode, report_func, this);
     else return;
     try {
-#ifdef ENABLE_OPENCSG
       this->processEvents();
-      this->csgRoot = csgrenderer.buildCSGTree(*rootNode);
-#endif
+      const auto openCSGLimit =
+        GlobalPreferences::inst()->getValue("advanced/openCSGLimit").toUInt();
+      const auto csg =
+        compileOrchestrator->compileCSG(this->tree, this->rootNode, openCSGLimit, true);
+
+      this->csgRoot = csg.csgRoot;
+      this->normalizedRoot = csg.normalizedRoot;
+      this->rootProduct = csg.rootProduct;
+      this->highlightsProducts = csg.highlightsProducts;
+      this->backgroundProducts = csg.backgroundProducts;
+      openCsgDisabledByLimit = csg.openCsgDisabledByLimit;
+
       renderStatistic.printCacheStatistic();
       this->processEvents();
     } catch (const ProgressCancelException&) {
@@ -982,59 +992,7 @@ void MainWindow::compileCSG()
     progress_report_fin();
     updateStatusBar(nullptr);
 
-    LOG("Compiling design (CSG Products normalization)...");
-    this->processEvents();
-
-    const size_t normalizelimit =
-      2ul * GlobalPreferences::inst()->getValue("advanced/openCSGLimit").toUInt();
-    CSGTreeNormalizer normalizer(normalizelimit);
-
-    if (this->csgRoot) {
-      this->normalizedRoot = normalizer.normalize(this->csgRoot);
-      if (this->normalizedRoot) {
-        this->rootProduct = std::make_shared<CSGProducts>();
-        this->rootProduct->import(this->normalizedRoot);
-      } else {
-        this->rootProduct.reset();
-        LOG(message_group::Warning, "CSG normalization resulted in an empty tree");
-        this->processEvents();
-      }
-    }
-
-    const std::vector<std::shared_ptr<CSGNode>>& highlight_terms = csgrenderer.getHighlightNodes();
-    if (highlight_terms.size() > 0) {
-      LOG("Compiling highlights (%1$d CSG Trees)...", highlight_terms.size());
-      this->processEvents();
-
-      this->highlightsProducts = std::make_shared<CSGProducts>();
-      for (const auto& highlight_term : highlight_terms) {
-        auto nterm = normalizer.normalize(highlight_term);
-        if (nterm) {
-          this->highlightsProducts->import(nterm);
-        }
-      }
-    } else {
-      this->highlightsProducts.reset();
-    }
-
-    const auto& background_terms = csgrenderer.getBackgroundNodes();
-    if (background_terms.size() > 0) {
-      LOG("Compiling background (%1$d CSG Trees)...", background_terms.size());
-      this->processEvents();
-
-      this->backgroundProducts = std::make_shared<CSGProducts>();
-      for (const auto& background_term : background_terms) {
-        auto nterm = normalizer.normalize(background_term);
-        if (nterm) {
-          this->backgroundProducts->import(nterm);
-        }
-      }
-    } else {
-      this->backgroundProducts.reset();
-    }
-
-    if (this->rootProduct && (this->rootProduct->size() >
-                              GlobalPreferences::inst()->getValue("advanced/openCSGLimit").toUInt())) {
+    if (openCsgDisabledByLimit) {
       LOG(message_group::UI_Warning, "Normalized tree has %1$d elements!", this->rootProduct->size());
       LOG(message_group::UI_Warning, "OpenCSG rendering has been disabled.");
     }
@@ -1047,6 +1005,7 @@ void MainWindow::compileCSG()
 #endif  // ifdef ENABLE_OPENCSG
     this->thrownTogetherRenderer = std::make_shared<ThrownTogetherRenderer>(
       this->rootProduct, this->highlightsProducts, this->backgroundProducts);
+    LOG("Perf: compileCSG took %1$d ms", static_cast<int>(csgTimer.elapsed()));
     LOG("Compile and preview finished.");
     renderStatistic.printRenderingTime();
     this->processEvents();
@@ -1536,16 +1495,6 @@ bool MainWindow::eventFilter(QObject *obj, QEvent *event)
   return QMainWindow::eventFilter(obj, event);
 }
 
-void MainWindow::setRenderVariables(ContextHandle<BuiltinContext>& context)
-{
-  const RenderVariables r = {
-    .preview = this->isPreview,
-    .time = this->animateWidget->getAnimTval(),
-    .camera = qglview->cam,
-  };
-  r.applyToContext(context);
-}
-
 /*!
    Returns true if the current document is a file on disk and that file has new content.
    Returns false if a file on disk has disappeared or if we haven't yet saved.
@@ -1665,8 +1614,9 @@ std::shared_ptr<SourceFile> MainWindow::parseDocument(EditorInterface *editor)
   }
 #endif  // ifdef ENABLE_PYTHON
 
-  SourceFile *sourceFile;
-  sourceFile = parse(sourceFile, fulltext, fname, fname, false) ? sourceFile : nullptr;
+  const auto parseResult = compileOrchestrator->parsePreparedDocument(fulltext, fname);
+  this->currentParserErrorPos = parseResult.parserErrorPos;
+  SourceFile *sourceFile = parseResult.success ? parseResult.sourceFile.get() : nullptr;
 
   editor->resetHighlighting();
   if (sourceFile) {
@@ -1680,7 +1630,7 @@ std::shared_ptr<SourceFile> MainWindow::parseDocument(EditorInterface *editor)
     editor->parameterWidget->setEnabled(false);
   }
 
-  return std::shared_ptr<SourceFile>(sourceFile);
+  return parseResult.success ? parseResult.sourceFile : nullptr;
 }
 
 void MainWindow::parseTopLevelDocument()
@@ -1690,7 +1640,10 @@ void MainWindow::parseTopLevelDocument()
   this->lastCompiledDoc = activeEditor->toPlainText();
 
   activeEditor->resetHighlighting();
+  QElapsedTimer parseTimer;
+  parseTimer.start();
   this->rootFile = parseDocument(activeEditor);
+  LOG("Perf: parseTopLevelDocument took %1$d ms", static_cast<int>(parseTimer.elapsed()));
   this->parsedFile = this->rootFile;
 }
 
@@ -3370,6 +3323,8 @@ void MainWindow::setupWindow()
  */
 void MainWindow::setupCoreSubsystems()
 {
+  compileOrchestrator = std::make_unique<CompileOrchestrator>();
+
   renderCompleteSoundEffect = new QSoundEffect(this);
   renderCompleteSoundEffect->setSource(QUrl("qrc:/sounds/complete.wav"));
 

@@ -29,6 +29,17 @@
 #include <string>
 #include <utility>
 
+class SourceFile;
+
+struct ParseResult {
+    SourceFile *file{nullptr};
+    int parserErrorPos{-1};
+    bool success{false};
+};
+
+extern ParseResult parse_with_result(const std::string& text, const std::string& filename,
+                                                                         const std::string& mainFile, int debug);
+
 extern bool parse(class SourceFile *& file, const std::string& text, const std::string& filename,
                   const std::string& mainFile, int debug);
 

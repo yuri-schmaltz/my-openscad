@@ -66,6 +66,50 @@ GeometryEvaluator::GeometryEvaluator(const Tree& tree) : tree(tree)
 {
 }
 
+void GeometryEvaluator::printCacheTelemetry() const
+{
+  if (cacheTelemetry.empty()) return;
+
+  size_t totalLookups = 0;
+  size_t totalHits = 0;
+  size_t totalGeometryHits = 0;
+  size_t totalCgalHits = 0;
+  size_t totalMisses = 0;
+  size_t totalGeometryInserts = 0;
+  size_t totalCgalInserts = 0;
+
+  std::vector<std::pair<std::string, CacheTelemetryEntry>> entries(cacheTelemetry.begin(), cacheTelemetry.end());
+  for (const auto& [name, entry] : entries) {
+    totalLookups += entry.totalLookups();
+    totalHits += entry.totalHits();
+    totalGeometryHits += entry.geometry_hits;
+    totalCgalHits += entry.cgal_hits;
+    totalMisses += entry.misses;
+    totalGeometryInserts += entry.geometry_inserts;
+    totalCgalInserts += entry.cgal_inserts;
+  }
+
+  std::sort(entries.begin(), entries.end(), [](const auto& lhs, const auto& rhs) {
+    if (lhs.second.totalLookups() != rhs.second.totalLookups()) {
+      return lhs.second.totalLookups() > rhs.second.totalLookups();
+    }
+    return lhs.first < rhs.first;
+  });
+
+  LOG("GeometryEvaluator cache telemetry: lookups=%1$d hits=%2$d misses=%3$d geometry_hits=%4$d cgal_hits=%5$d geometry_inserts=%6$d cgal_inserts=%7$d",
+      totalLookups, totalHits, totalMisses, totalGeometryHits, totalCgalHits,
+      totalGeometryInserts, totalCgalInserts);
+
+  constexpr size_t maxEntriesToPrint = 10;
+  const size_t count = std::min(entries.size(), maxEntriesToPrint);
+  for (size_t index = 0; index < count; ++index) {
+    const auto& [name, entry] = entries[index];
+    LOG("  Node cache [%1$s]: lookups=%2$d hits=%3$d misses=%4$d geometry_hits=%5$d cgal_hits=%6$d geometry_inserts=%7$d cgal_inserts=%8$d",
+        name, entry.totalLookups(), entry.totalHits(), entry.misses,
+        entry.geometry_hits, entry.cgal_hits, entry.geometry_inserts, entry.cgal_inserts);
+  }
+}
+
 /*!
    Set allownef to false to force the result to _not_ be a Nef polyhedron
 
@@ -337,10 +381,12 @@ void GeometryEvaluator::smartCacheInsert(const AbstractNode& node,
                                          const std::shared_ptr<const Geometry>& geom)
 {
   const std::string& key = this->tree.getIdString(node);
+  auto& telemetry = this->cacheTelemetry[node.name()];
 
   if (CGALCache::acceptsGeometry(geom)) {
     if (!CGALCache::instance()->contains(key)) {
       CGALCache::instance()->insert(key, geom);
+      telemetry.cgal_inserts++;
     }
   } else if (!GeometryCache::instance()->contains(key)) {
     // FIXME: Sanity-check Polygon2d as well?
@@ -351,6 +397,8 @@ void GeometryEvaluator::smartCacheInsert(const AbstractNode& node,
     // Perhaps add acceptsGeometry() to GeometryCache as well?
     if (!GeometryCache::instance()->insert(key, geom)) {
       LOG(message_group::Warning, "GeometryEvaluator: Node didn't fit into cache.");
+    } else {
+      telemetry.geometry_inserts++;
     }
   }
 }
@@ -367,8 +415,16 @@ std::shared_ptr<const Geometry> GeometryEvaluator::smartCacheGet(const AbstractN
   const std::string& key = this->tree.getIdString(node);
   const bool hasgeom = GeometryCache::instance()->contains(key);
   const bool hascgal = CGALCache::instance()->contains(key);
-  if (hascgal && (preferNef || !hasgeom)) return CGALCache::instance()->get(key);
-  if (hasgeom) return GeometryCache::instance()->get(key);
+  auto& telemetry = this->cacheTelemetry[node.name()];
+  if (hascgal && (preferNef || !hasgeom)) {
+    telemetry.cgal_hits++;
+    return CGALCache::instance()->get(key);
+  }
+  if (hasgeom) {
+    telemetry.geometry_hits++;
+    return GeometryCache::instance()->get(key);
+  }
+  telemetry.misses++;
   return {};
 }
 

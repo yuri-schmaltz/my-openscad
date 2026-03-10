@@ -42,9 +42,11 @@
 #include "core/Assignment.h"
 #include "core/Expression.h"
 #include "core/function.h"
+#include "openscad.h"
 #include "io/fileutils.h"
 #include "utils/printutils.h"
 #include <memory>
+#include <mutex>
 #include <sstream>
 #include <stack>
 #include <filesystem>
@@ -60,7 +62,7 @@ static Location debug_location(const std::string& info, const struct YYLTYPE& lo
 #define LOCD(str, loc) LOC(loc)
 #endif
 
-int parser_error_pos = -1;
+thread_local int parser_error_pos = -1;
 
 int parserlex(void);
 void yyerror(char const *s);
@@ -73,16 +75,50 @@ int lexerlex_destroy(void);
 int lexerlex(void);
 static void handle_assignment(const std::string token, Expression *expr, const Location loc);
 
-std::stack<std::shared_ptr<LocalScope>> scope_stack;
-SourceFile *rootfile;
+thread_local std::stack<std::shared_ptr<LocalScope>> scope_stack;
+thread_local SourceFile *rootfile;
 
 extern void lexerdestroy();
 extern FILE *lexerin;
-const char *parser_input_buffer;
-static fs::path mainFilePath;
-static bool parsingMainFile;
+thread_local const char *parser_input_buffer;
+thread_local fs::path mainFilePath;
+thread_local bool parsingMainFile;
 
-bool fileEnded=false;
+static std::mutex parse_mutex;
+
+thread_local bool fileEnded = false;
+
+struct ParserSession {
+  int parser_error_pos{-1};
+  std::stack<std::shared_ptr<LocalScope>> scope_stack;
+  SourceFile *rootfile{nullptr};
+  const char *parser_input_buffer{nullptr};
+  fs::path main_file_path;
+  bool parsing_main_file{false};
+  bool file_ended{false};
+};
+
+static void activate_parser_session(const ParserSession& session)
+{
+  parser_error_pos = session.parser_error_pos;
+  scope_stack = session.scope_stack;
+  rootfile = session.rootfile;
+  parser_input_buffer = session.parser_input_buffer;
+  mainFilePath = session.main_file_path;
+  parsingMainFile = session.parsing_main_file;
+  fileEnded = session.file_ended;
+}
+
+static void sync_parser_session(ParserSession& session)
+{
+  session.parser_error_pos = parser_error_pos;
+  session.scope_stack = scope_stack;
+  session.rootfile = rootfile;
+  session.parser_input_buffer = parser_input_buffer;
+  session.main_file_path = mainFilePath;
+  session.parsing_main_file = parsingMainFile;
+  session.file_ended = fileEnded;
+}
 %}
 
 %initial-action
@@ -791,19 +827,24 @@ void handle_assignment(const std::string token, Expression *expr, const Location
 	}
 }
 
-bool parse(SourceFile *&file, const std::string& text, const std::string &filename, const std::string &mainFile, int debug)
+ParseResult parse_with_result(const std::string& text, const std::string &filename,
+                              const std::string &mainFile, int debug)
 {
+  std::lock_guard<std::mutex> lock(parse_mutex);
+  ParseResult result;
+  ParserSession session;
+  activate_parser_session(session);
   fs::path filepath;
   try {
     filepath = filename.empty() ? fs::current_path() : fs::absolute(fs::path{filename});
     mainFilePath = mainFile.empty() ? fs::current_path() : fs::absolute(fs::path{mainFile});
   } catch (const std::filesystem::filesystem_error& fs_err) {
     LOG(message_group::Error, "Parser error: file system error: %1$s", fs_err.what());
-    return false;
+    return result;
   } catch (...) {
     // yyerror tries to print the file path, which throws again, and we can't do that
     LOG(message_group::Error, "Parser error: file access denied");
-    return false;
+    return result;
   }
 
   parsingMainFile = mainFilePath == filepath;
@@ -830,17 +871,30 @@ bool parse(SourceFile *&file, const std::string& text, const std::string &filena
   lexerdestroy();
   lexerlex_destroy();
 
-  file = rootfile;
+  result.file = rootfile;
+  result.parserErrorPos = parser_error_pos;
   if (parserretval != 0) {
     // Clear scope_stack when parsing aborted
     scope_stack = {};
-    return false;
+    parser_input_buffer = nullptr;
+    sync_parser_session(session);
+    return result;
   }
 
+  result.success = true;
   parser_error_pos = -1;
   parser_input_buffer = nullptr;
   scope_stack.pop();
   assert(scope_stack.size()==0);
+  sync_parser_session(session);
 
-  return true;
+  return result;
+}
+
+bool parse(SourceFile *&file, const std::string& text, const std::string &filename,
+           const std::string &mainFile, int debug)
+{
+  const auto result = parse_with_result(text, filename, mainFile, debug);
+  file = result.file;
+  return result.success;
 }
