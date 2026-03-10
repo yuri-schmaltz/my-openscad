@@ -5,16 +5,20 @@ from .ast import (
   BinaryExpr,
   BooleanOp,
   ColorOp,
+  ForStmt,
   FunctionCallExpr,
   FunctionDef,
   IfStmt,
+  IndexExpr,
   IncludeStmt,
   LetExpr,
   ModuleCall,
   ModuleDef,
   Primitive,
   Program,
+  RangeExpr,
   RawCall,
+  TernaryExpr,
   Transform,
   UnaryExpr,
   UseStmt,
@@ -87,19 +91,25 @@ class Parser:
       raise ParseError(f"String esperada na posicao {t.index}")
     return t.value[1:-1]
 
-  def parse_array(self) -> list[object]:
+  def parse_bracket_expr(self):
     self.expect_symbol("[")
-    values: list[object] = []
-    while True:
-      if self.peek().kind == "symbol" and self.peek().value == "]":
-        self.advance()
-        break
-      values.append(self.parse_value())
-      if self.peek().kind == "symbol" and self.peek().value == ",":
-        self.advance()
-        continue
+    if self.match_symbol("]"):
+      return []
+
+    first = self.parse_expression()
+    if self.match_symbol(":"):
+      second = self.parse_expression()
+      if self.match_symbol(":"):
+        third = self.parse_expression()
+        self.expect_symbol("]")
+        return RangeExpr(start=first, step=second, end=third)
       self.expect_symbol("]")
-      break
+      return RangeExpr(start=first, end=second)
+
+    values: list[object] = [first]
+    while self.match_symbol(","):
+      values.append(self.parse_expression())
+    self.expect_symbol("]")
     return values
 
   def parse_call_args_positional(self) -> list[object]:
@@ -149,7 +159,13 @@ class Parser:
     return self.parse_expression()
 
   def parse_expression(self):
-    return self.parse_logical_or()
+    condition = self.parse_logical_or()
+    if self.match_symbol("?"):
+      then_expr = self.parse_expression()
+      self.expect_symbol(":")
+      else_expr = self.parse_expression()
+      return TernaryExpr(condition=condition, then_expr=then_expr, else_expr=else_expr)
+    return condition
 
   def parse_logical_or(self):
     left = self.parse_logical_and()
@@ -247,7 +263,7 @@ class Parser:
     if t.kind == "string":
       return self.parse_string()
     if t.kind == "symbol" and t.value == "[":
-      return self.parse_array()
+      return self.parse_bracket_expr()
     if t.kind == "symbol" and t.value == "(":
       self.advance()
       expr = self.parse_expression()
@@ -256,10 +272,29 @@ class Parser:
     if t.kind == "ident":
       name = self.advance().value
       if name == "let" and self.peek().kind == "symbol" and self.peek().value == "(":
-        return self.parse_let_expr()
-      if self.peek().kind == "symbol" and self.peek().value == "(":
-        return FunctionCallExpr(name=name, args=self.parse_call_args_positional())
-      return VarRef(name)
+        expr = self.parse_let_expr()
+      elif self.peek().kind == "symbol" and self.peek().value == "(":
+        expr = FunctionCallExpr(name=name, args=self.parse_call_args_positional())
+      else:
+        expr = VarRef(name)
+
+      while self.peek().kind == "symbol" and self.peek().value == "[":
+        self.advance()
+        idx_expr = self.parse_expression()
+        self.expect_symbol("]")
+        expr = IndexExpr(target=expr, index=idx_expr)
+      return expr
+
+    if t.kind == "symbol" and t.value == "(":
+      self.advance()
+      expr = self.parse_expression()
+      self.expect_symbol(")")
+      while self.peek().kind == "symbol" and self.peek().value == "[":
+        self.advance()
+        idx_expr = self.parse_expression()
+        self.expect_symbol("]")
+        expr = IndexExpr(target=expr, index=idx_expr)
+      return expr
     raise ParseError(f"Valor invalido na posicao {t.index}")
 
   def parse_path_value(self) -> str:
@@ -329,6 +364,21 @@ class Parser:
       if self.match_keyword("else"):
         else_body = self.parse_body_items()
       return IfStmt(condition=condition, then_body=then_body, else_body=else_body)
+
+    if name == "for":
+      self.expect_symbol("(")
+      bindings: list[tuple[str, object]] = []
+      while True:
+        var_name = self.expect_ident()
+        self.expect_symbol("=")
+        iterable = self.parse_expression()
+        bindings.append((var_name, iterable))
+        if self.match_symbol(","):
+          continue
+        self.expect_symbol(")")
+        break
+      body = self.parse_body_items()
+      return ForStmt(bindings=bindings, body=body)
 
     if name == "include":
       path = self.parse_path_value()

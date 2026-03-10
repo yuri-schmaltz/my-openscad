@@ -28,6 +28,26 @@ class BinaryExpr(Node):
 
 
 @dataclass
+class TernaryExpr(Node):
+  condition: Any
+  then_expr: Any
+  else_expr: Any
+
+
+@dataclass
+class IndexExpr(Node):
+  target: Any
+  index: Any
+
+
+@dataclass
+class RangeExpr(Node):
+  start: Any
+  end: Any
+  step: Any = None
+
+
+@dataclass
 class FunctionCallExpr(Node):
   name: str
   args: list[Any] = field(default_factory=list)
@@ -79,6 +99,12 @@ class IfStmt(Node):
   condition: Any
   then_body: list[Node] = field(default_factory=list)
   else_body: list[Node] = field(default_factory=list)
+
+
+@dataclass
+class ForStmt(Node):
+  bindings: list[tuple[str, Any]] = field(default_factory=list)
+  body: list[Node] = field(default_factory=list)
 
 
 @dataclass

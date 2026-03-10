@@ -25,8 +25,15 @@ def main():
   count_use = run_smoke(root / "sample_main_use.scad")
   count_functions = run_smoke(root / "sample_main_functions.scad")
   count_if_let = run_smoke(root / "sample_if_let.scad")
+  count_for_ternary_index = run_smoke(root / "sample_for_ternary_index.scad")
 
-  if count_include <= 0 or count_use <= 0 or count_functions <= 0 or count_if_let <= 0:
+  if (
+    count_include <= 0
+    or count_use <= 0
+    or count_functions <= 0
+    or count_if_let <= 0
+    or count_for_ternary_index <= 0
+  ):
     raise SystemExit(1)
 
   print("Smoke parser/evaluator OK")

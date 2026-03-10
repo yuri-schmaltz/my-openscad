@@ -10,16 +10,20 @@ from .ast import (
   BooleanOp,
   ColorOp,
   EvalItem,
+  ForStmt,
   FunctionCallExpr,
   FunctionDef,
   IfStmt,
+  IndexExpr,
   IncludeStmt,
   LetExpr,
   ModuleCall,
   ModuleDef,
   Primitive,
   Program,
+  RangeExpr,
   RawCall,
+  TernaryExpr,
   Transform,
   UnaryExpr,
   UseStmt,
@@ -80,6 +84,36 @@ def _truthy(value) -> bool:
   return bool(value)
 
 
+def _as_number(value) -> float:
+  if isinstance(value, bool):
+    return 1.0 if value else 0.0
+  if isinstance(value, (int, float)):
+    return float(value)
+  return 0.0
+
+
+def _expand_range(start, end, step=None):
+  s = int(_as_number(start))
+  e = int(_as_number(end))
+  if step is None:
+    step_v = 1 if s <= e else -1
+  else:
+    step_v = int(_as_number(step))
+    if step_v == 0:
+      step_v = 1
+  if step_v > 0:
+    return list(range(s, e + 1, step_v))
+  return list(range(s, e - 1, step_v))
+
+
+def _iter_values(value):
+  if isinstance(value, RangeExpr):
+    return []
+  if isinstance(value, list):
+    return value
+  return [value]
+
+
 def _eval_function_call(expr: FunctionCallExpr, ctx: EvalContext):
   resolved_args = [_resolve_value(v, ctx.variables, ctx) for v in expr.args]
 
@@ -131,7 +165,23 @@ def _resolve_value(value, variables: dict[str, object], ctx: EvalContext | None 
   if isinstance(value, BinaryExpr):
     left = _resolve_value(value.left, variables, ctx)
     right = _resolve_value(value.right, variables, ctx)
-    return _eval_binary(value.op, float(left), float(right))
+    return _eval_binary(value.op, _as_number(left), _as_number(right))
+  if isinstance(value, TernaryExpr):
+    cond = _resolve_value(value.condition, variables, ctx)
+    if _truthy(cond):
+      return _resolve_value(value.then_expr, variables, ctx)
+    return _resolve_value(value.else_expr, variables, ctx)
+  if isinstance(value, IndexExpr):
+    target = _resolve_value(value.target, variables, ctx)
+    idx = int(_as_number(_resolve_value(value.index, variables, ctx)))
+    if isinstance(target, list) and 0 <= idx < len(target):
+      return target[idx]
+    return 0.0
+  if isinstance(value, RangeExpr):
+    start = _resolve_value(value.start, variables, ctx)
+    end = _resolve_value(value.end, variables, ctx)
+    step = _resolve_value(value.step, variables, ctx) if value.step is not None else None
+    return _expand_range(start, end, step)
   if isinstance(value, FunctionCallExpr):
     if ctx is None:
       return 0.0
@@ -237,6 +287,38 @@ def _eval_node(node, ctx: EvalContext, transform_chain=None, color=None):
       node_type="group",
       transform_chain=transform_chain,
       children=[_eval_node(ch, ctx, transform_chain, color) for ch in chosen],
+      color=color,
+    )
+
+  if isinstance(node, ForStmt):
+    expanded_children: list[EvalItem] = []
+
+    def run_binding(binding_index: int, current_vars: dict[str, object]):
+      if binding_index >= len(node.bindings):
+        sub_ctx = EvalContext(
+          modules=ctx.modules,
+          functions=ctx.functions,
+          variables=current_vars,
+          source_path=ctx.source_path,
+          include_loader=ctx.include_loader,
+          visited_includes=ctx.visited_includes,
+        )
+        for ch in node.body:
+          expanded_children.append(_eval_node(ch, sub_ctx, transform_chain, color))
+        return
+
+      var_name, iterable_expr = node.bindings[binding_index]
+      iter_values = _resolve_value(iterable_expr, current_vars, ctx)
+      for v in _iter_values(iter_values):
+        next_vars = dict(current_vars)
+        next_vars[var_name] = v
+        run_binding(binding_index + 1, next_vars)
+
+    run_binding(0, dict(ctx.variables))
+    return EvalItem(
+      node_type="group",
+      transform_chain=transform_chain,
+      children=expanded_children,
       color=color,
     )
 
