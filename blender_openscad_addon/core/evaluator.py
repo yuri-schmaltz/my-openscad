@@ -20,13 +20,18 @@ from .ast import (
   IncludeStmt,
   LetExpr,
   ListComprehensionExpr,
+  Mirror,
   ModuleCall,
   ModuleDef,
+  Multmatrix,
+  Offset,
   Polygon,
   Primitive,
   Program,
+  Projection,
   RangeExpr,
   RawCall,
+  Resize,
   Square,
   TernaryExpr,
   Transform,
@@ -255,6 +260,60 @@ def _eval_function_call(expr: FunctionCallExpr, ctx: EvalContext):
         bx, by, bz = float(b[0]), float(b[1]), float(b[2])
         return [ay * bz - az * by, az * bx - ax * bz, ax * by - ay * bx]
     return [0.0, 0.0, 0.0]
+  if expr.name == "sign":
+    if resolved_args:
+      v = float(resolved_args[0])
+      return 1.0 if v > 0 else (-1.0 if v < 0 else 0.0)
+    return 0.0
+  if expr.name == "atan":
+    if resolved_args:
+      import math
+      return float(math.degrees(math.atan(float(resolved_args[0]))))
+    return 0.0
+  if expr.name == "atan2":
+    if len(resolved_args) >= 2:
+      import math
+      return float(math.degrees(math.atan2(float(resolved_args[0]), float(resolved_args[1]))))
+    return 0.0
+  if expr.name == "asin":
+    if resolved_args:
+      import math
+      val = max(-1.0, min(1.0, float(resolved_args[0])))
+      return float(math.degrees(math.asin(val)))
+    return 0.0
+  if expr.name == "acos":
+    if resolved_args:
+      import math
+      val = max(-1.0, min(1.0, float(resolved_args[0])))
+      return float(math.degrees(math.acos(val)))
+    return 0.0
+  if expr.name == "log":
+    if resolved_args:
+      import math
+      val = float(resolved_args[0])
+      return float(math.log10(val)) if val > 0 else 0.0
+    return 0.0
+  if expr.name == "ln":
+    if resolved_args:
+      import math
+      val = float(resolved_args[0])
+      return float(math.log(val)) if val > 0 else 0.0
+    return 0.0
+  if expr.name == "exp":
+    if resolved_args:
+      import math
+      return float(math.exp(float(resolved_args[0])))
+    return 1.0
+  if expr.name == "is_undef":
+    return resolved_args[0] is None if resolved_args else True
+  if expr.name == "is_num":
+    return isinstance(resolved_args[0], (int, float)) and not isinstance(resolved_args[0], bool) if resolved_args else False
+  if expr.name == "is_bool":
+    return isinstance(resolved_args[0], bool) if resolved_args else False
+  if expr.name == "is_string":
+    return isinstance(resolved_args[0], str) if resolved_args else False
+  if expr.name == "is_list":
+    return isinstance(resolved_args[0], list) if resolved_args else False
 
   fn = ctx.functions.get(expr.name)
   if fn is None:
@@ -607,6 +666,51 @@ def _eval_node(node, ctx: EvalContext, transform_chain=None, color=None):
       node_type="extrude",
       transform_chain=transform_chain,
       primitive=Primitive(kind=node.kind + "_extrude", args=resolve),
+      children=child_items,
+      color=color,
+    )
+
+  if isinstance(node, Mirror):
+    vec = [_resolve_value(v, ctx.variables, ctx) if not isinstance(v, (int, float)) else v for v in node.vector]
+    new_chain = list(transform_chain) + [("mirror", [float(x) for x in vec])]
+    child_items = [_eval_node(ch, ctx, new_chain, color) for ch in node.body]
+    if len(child_items) == 1:
+      return child_items[0]
+    return EvalItem(node_type="group", transform_chain=transform_chain, children=child_items, color=color)
+
+  if isinstance(node, Resize):
+    ns = [_resolve_value(v, ctx.variables, ctx) if not isinstance(v, (int, float)) else v for v in node.newsize]
+    new_chain = list(transform_chain) + [("resize", [float(x) for x in ns])]
+    child_items = [_eval_node(ch, ctx, new_chain, color) for ch in node.body]
+    if len(child_items) == 1:
+      return child_items[0]
+    return EvalItem(node_type="group", transform_chain=transform_chain, children=child_items, color=color)
+
+  if isinstance(node, Multmatrix):
+    mat = _resolve_value(node.matrix, ctx.variables, ctx) if not isinstance(node.matrix, list) else node.matrix
+    new_chain = list(transform_chain) + [("multmatrix", mat if isinstance(mat, list) else [])]
+    child_items = [_eval_node(ch, ctx, new_chain, color) for ch in node.body]
+    if len(child_items) == 1:
+      return child_items[0]
+    return EvalItem(node_type="group", transform_chain=transform_chain, children=child_items, color=color)
+
+  if isinstance(node, Offset):
+    resolve = {k: _resolve_value(v, ctx.variables, ctx) for k, v in node.args.items()}
+    child_items = [_eval_node(ch, ctx, transform_chain, color) for ch in node.body]
+    return EvalItem(
+      node_type="offset",
+      transform_chain=transform_chain,
+      primitive=Primitive(kind="offset", args=resolve),
+      children=child_items,
+      color=color,
+    )
+
+  if isinstance(node, Projection):
+    child_items = [_eval_node(ch, ctx, transform_chain, color) for ch in node.body]
+    return EvalItem(
+      node_type="projection",
+      transform_chain=transform_chain,
+      primitive=Primitive(kind="projection", args={"cut": node.cut}),
       children=child_items,
       color=color,
     )

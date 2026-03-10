@@ -15,13 +15,18 @@ from .ast import (
   IncludeStmt,
   LetExpr,
   ListComprehensionExpr,
+  Mirror,
   ModuleCall,
   ModuleDef,
+  Multmatrix,
+  Offset,
   Polygon,
   Primitive,
   Program,
+  Projection,
   RangeExpr,
   RawCall,
+  Resize,
   Square,
   TernaryExpr,
   Transform,
@@ -443,6 +448,35 @@ class Parser:
         raise ParseError(f"{name} espera vetor")
       body = self.parse_body_items()
       return Transform(kind=name, values=vals, body=body)
+
+    if name == "mirror":
+      vals = args.get("arg0", args.get("v", [1, 0, 0]))
+      if not isinstance(vals, list):
+        vals = [1, 0, 0]
+      body = self.parse_body_items()
+      return Mirror(vector=vals, body=body)
+
+    if name == "resize":
+      newsize = args.get("arg0", args.get("newsize", [0, 0, 0]))
+      auto = args.get("auto", False)
+      if not isinstance(newsize, list):
+        newsize = [0, 0, 0]
+      body = self.parse_body_items()
+      return Resize(newsize=newsize, auto=auto, body=body)
+
+    if name == "multmatrix":
+      mat = args.get("arg0", args.get("m", []))
+      body = self.parse_body_items()
+      return Multmatrix(matrix=mat, body=body)
+
+    if name == "offset":
+      body = self.parse_body_items()
+      return Offset(args=args, body=body)
+
+    if name == "projection":
+      cut = bool(args.get("cut", False))
+      body = self.parse_body_items()
+      return Projection(cut=cut, body=body)
 
     if name in {"union", "difference", "intersection", "hull", "minkowski"}:
       body = self.parse_body_items()

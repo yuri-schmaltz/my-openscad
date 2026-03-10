@@ -141,6 +141,37 @@ class Extrude(Node):
 
 
 @dataclass
+class Mirror(Node):
+  vector: list[float]
+  body: list[Node] = field(default_factory=list)
+
+
+@dataclass
+class Resize(Node):
+  newsize: list[float]
+  auto: Any  # bool ou lista de bools
+  body: list[Node] = field(default_factory=list)
+
+
+@dataclass
+class Multmatrix(Node):
+  matrix: list[list[float]]
+  body: list[Node] = field(default_factory=list)
+
+
+@dataclass
+class Offset(Node):
+  args: dict[str, Any]
+  body: list[Node] = field(default_factory=list)
+
+
+@dataclass
+class Projection(Node):
+  cut: bool
+  body: list[Node] = field(default_factory=list)
+
+
+@dataclass
 class Polygon(Node):
   points: Any
   paths: Any = None

@@ -21,9 +21,10 @@ Addon para Blender 5.x+ que implementa um fluxo OpenSCAD-like dentro do Blender.
   - indexacao em vetores/listas: `v[i]`, incluindo encadeamento `v[i][j]`
   - `for (i=[ini:fim]) { ... }` e `for (i=[ini:passo:fim]) { ... }`
   - list comprehension: `[for (i=[ini:fim]) expr]` e com filtro: `[for (i=[...]) if (condition) expr]`
-  - funcoes built-in: `echo(...)`, `min()`, `max()`, `abs()`, `len()`, `str()`, `lookup()`, `round()`, `floor()`, `ceil()`, `pow()`, `sqrt()`, `sin()`, `cos()`, `tan()`, `rands()`, `bool()`, `int()`, `each()`, `concat()`, `sort()`, `reverse()`, `norm()`, `cross()`
+  - funcoes built-in: `echo(...)`, `min()`, `max()`, `abs()`, `len()`, `str()`, `lookup()`, `round()`, `floor()`, `ceil()`, `pow()`, `sqrt()`, `sin()`, `cos()`, `tan()`, `rands()`, `bool()`, `int()`, `each()`, `concat()`, `sort()`, `reverse()`, `norm()`, `cross()`, `sign()`, `atan()`, `atan2()`, `asin()`, `acos()`, `log()`, `ln()`, `exp()`, `is_undef()`, `is_num()`, `is_bool()`, `is_string()`, `is_list()`
   - primitivos 2D: `circle()`, `square()`, `polygon()`
   - extrude: `linear_extrude()`, `rotate_extrude()`
+  - transforms 3D/2D: `mirror()`, `resize()`, `multmatrix()`, `offset()`, `projection()`
   - `hull()` e `minkowski()` com fallback aproximado para uniao no backend Blender
 - Preview de geometria em colecao dedicada `OpenSCAD Preview`.
 - Render com aplicacao opcional de boolean modifiers.
