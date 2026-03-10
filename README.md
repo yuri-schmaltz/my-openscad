@@ -81,6 +81,19 @@ Exemplo:
 git tag v0.2.0
 git push origin v0.2.0
 
+### Release assistido (manual)
+
+Workflow:
+
+- .github/workflows/release-assist.yml
+
+Uso:
+
+1. Execute o workflow manualmente em Actions.
+2. Informe `version` (ex.: `0.2.0`) e `target_branch` (ex.: `master`).
+3. O workflow atualiza versao, cria commit, cria tag `v0.2.0` e faz push.
+4. Em seguida, o workflow de release por tag publica automaticamente o zip.
+
 ## Instalacao do Addon
 
 1. Compacte a pasta blender_openscad_addon em .zip.

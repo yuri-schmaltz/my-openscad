@@ -1,0 +1,76 @@
+name: Assist Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Versao no formato MAJOR.MINOR.PATCH (ex: 0.2.0)"
+        required: true
+        type: string
+      target_branch:
+        description: "Branch alvo para commit/tag"
+        required: true
+        default: "master"
+        type: string
+
+jobs:
+  create-version-tag:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout target branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.target_branch }}
+          fetch-depth: 0
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Validate version format
+        shell: bash
+        run: |
+          if ! [[ "${{ inputs.version }}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Versao invalida: ${{ inputs.version }}"
+            echo "Use MAJOR.MINOR.PATCH"
+            exit 1
+          fi
+
+      - name: Ensure tag does not already exist
+        shell: bash
+        run: |
+          if git rev-parse "v${{ inputs.version }}" >/dev/null 2>&1; then
+            echo "Tag v${{ inputs.version }} ja existe"
+            exit 1
+          fi
+
+      - name: Sync addon version files
+        run: python scripts/set_addon_version.py ${{ inputs.version }}
+
+      - name: Commit version update
+        shell: bash
+        run: |
+          if git diff --quiet; then
+            echo "Sem alteracoes para commit"
+            exit 1
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add blender_openscad_addon/blender_manifest.toml blender_openscad_addon/__init__.py
+          git commit -m "chore(release): bump version to ${{ inputs.version }}"
+
+      - name: Push commit and tag
+        shell: bash
+        run: |
+          git push origin HEAD:${{ inputs.target_branch }}
+          git tag "v${{ inputs.version }}"
+          git push origin "v${{ inputs.version }}"
+
+      - name: Summary
+        shell: bash
+        run: |
+          echo "Release assist concluido para v${{ inputs.version }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "Tag criada e enviada. O workflow Addon Release ira publicar o zip." >> "$GITHUB_STEP_SUMMARY"
