@@ -1,6 +1,6 @@
 # Testing
 
-Caution, this file may be outdated.
+This document describes the current test workflows used in this repository.
 
 ## Running Regression Tests
 
@@ -11,7 +11,17 @@ Caution, this file may be outdated.
 
 ### Building Test Environment
 
-Test files will be automatically configured and built (but not ran) as part of the main openscad build. See `README.md` for how to get a build of the main openscad binary working.
+Test files are automatically configured and built (but not run) as part of the main OpenSCAD build. See `README.md` for how to build the main OpenSCAD binary.
+
+Typical local workflow:
+
+```bash
+cmake -S . -B build -DENABLE_TESTS=ON
+cmake --build build
+ctest --test-dir build --output-on-failure -j8
+```
+
+For multi-config generators (Visual Studio, Xcode), add `-C <config>` when running tests, e.g. `-C Release`.
 
 Windows builds are a special case, since they are cross-compiled from a linux system. The automated build servers package up the tests alongside the binary if you download a.ZIP Development Snapshot from: `http://openscad.org/downloads.html#snapshots`. **NOTE:** **ONLY THE ZIP VERSION** of the download contains the tests. They would not run properly using an installer to place under "C:\\Program Files" since that would require elevated privileges to write the test output files.
 
@@ -37,6 +47,25 @@ From your build directory:
   * Unzip the `OpenSCAD-Tests-YYYY.MM.DD` file onto a Windows(TM) machine.
   * There will be a script called `OpenSCAD-Test-Console.py` in the parent folder.
   * Double-click it, and it will open a console, from which you can type the `ctest` commands listed above.
+
+### Smoke Tests for Pull Requests
+
+Use this sequence for a fast confidence check before opening or updating a PR:
+
+```bash
+cmake -S . -B build -DENABLE_TESTS=ON
+cmake --build build -j8
+ctest --test-dir build --output-on-failure -j8
+ctest --test-dir build --output-on-failure -R "unit|parser|csg"
+```
+
+For multi-config generators, add `-C <config>` to the CTest commands.
+
+If your change is GUI-related, also run:
+
+```bash
+./OpenSCAD --run-all-gui-tests
+```
 
 ## Running Unit Tests
 
@@ -76,7 +105,7 @@ On macOS, you need to run the executable inside the app bundle:
 ./OpenSCAD.app/Contents/MacOS/OpenSCAD --run-all-gui-tests
 ```
 
-The GUI tests must be enabled during build with `-DENABLE_GUI_TESTS=ON` (enabled by default).
+The GUI tests must be enabled during build with `-DENABLE_GUI_TESTS=ON`.
 
 ### Available GUI Tests
 
@@ -141,11 +170,11 @@ Some versions of Xvfb may fail, however.
 
 To help CMAKE find eigen, OpenCSG, CGAL, Boost, and GLEW, you can use environment variables, just like for the main qmake & openscad.pro.
 
-Examples :
+Examples:
 
 ```bash
-OPENSCAD_LIBRARIES=$HOME cmake.
-CGALDIR=$HOME/CGAL-3.9 BOOSTDIR=$HOME/boost-1.47.0 cmake.
+OPENSCAD_LIBRARIES=$HOME cmake .
+CGALDIR=$HOME/CGAL-3.9 BOOSTDIR=$HOME/boost-1.47.0 cmake .
 ```
 
 Valid variables are as follows :
@@ -188,7 +217,7 @@ There is an unsupported way to do this, by defining NULLGL to Cmake :
 
 ```bash
 mkdir nullglbin
-cd nullglbin && cmake.. -DNULLGL=1 && make
+cd nullglbin && cmake .. -DNULLGL=1 && make
 ```
 
 The resulting `openscad_nogui` binary will fail most tests, but may be useful for debugging and outputting 3d-formats like STL on systems without GL. This option may break in the future and require tweaking to get working again.
@@ -205,9 +234,9 @@ The MSVC build was last tested circa 2012. The last time it worked, these were t
 > Start the 'QT command prompt'
 > cd \where\you\installed\openscad
 > cd tests
-> cmake. -DCMAKE_BUILD_TYPE=Release
+> cmake . -DCMAKE_BUILD_TYPE=Release
 > sed -i s/\/MD/\/MT/ CMakeCache.txt
-> cmake.
+> cmake .
 > nmake -f Makefile
 ```
 
