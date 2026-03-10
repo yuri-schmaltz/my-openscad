@@ -173,6 +173,35 @@ def _eval_function_call(expr: FunctionCallExpr, ctx: EvalContext):
     if len(resolved_args) >= 2:
       return float(resolved_args[0]) ** float(resolved_args[1])
     return 0.0
+  if expr.name == "sqrt":
+    if resolved_args:
+      import math
+      val = float(resolved_args[0])
+      return float(math.sqrt(val)) if val >= 0 else 0.0
+    return 0.0
+  if expr.name == "sin":
+    if resolved_args:
+      import math
+      return float(math.sin(float(resolved_args[0])))
+    return 0.0
+  if expr.name == "cos":
+    if resolved_args:
+      import math
+      return float(math.cos(float(resolved_args[0])))
+    return 0.0
+  if expr.name == "tan":
+    if resolved_args:
+      import math
+      return float(math.tan(float(resolved_args[0])))
+    return 0.0
+  if expr.name == "rands":
+    import random
+    if len(resolved_args) >= 3:
+      min_val = float(resolved_args[0])
+      max_val = float(resolved_args[1])
+      count = int(float(resolved_args[2]))
+      return [random.uniform(min_val, max_val) for _ in range(count)]
+    return []
 
   fn = ctx.functions.get(expr.name)
   if fn is None:
