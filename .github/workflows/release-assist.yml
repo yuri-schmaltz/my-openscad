@@ -11,6 +11,7 @@ on:
 jobs:
   create-version-tag:
     runs-on: ubuntu-latest
+    environment: production
     permissions:
       contents: write
     steps:

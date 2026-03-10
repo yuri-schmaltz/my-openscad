@@ -69,6 +69,12 @@ Workflow de release:
 
 - .github/workflows/release.yml
 
+Protecao de aprovacao manual:
+
+- Os workflows de release usam o ambiente `production`.
+- Configure em GitHub: Settings > Environments > production.
+- Defina `Required reviewers` para exigir aprovacao manual antes da publicacao.
+
 Fluxo:
 
 1. Atualize versao com scripts/set_addon_version.py.
