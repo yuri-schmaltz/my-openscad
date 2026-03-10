@@ -5,7 +5,7 @@ from dataclasses import dataclass
 
 
 TOKEN_REGEX = re.compile(
-  r"(?P<number>\d+(?:\.\d+)?)|(?P<string>\"[^\"\\]*(?:\\.[^\"\\]*)*\")|(?P<ident>[A-Za-z_][A-Za-z0-9_]*)|(?P<symbol>[\[\]\{\}\(\),;=<>./\\\-+*%!&|?:])"
+  r"(?P<number>\d+(?:\.\d+)?)|(?P<string>\"[^\"\\]*(?:\\.[^\"\\]*)*\")|(?P<ident>\$?[A-Za-z_][A-Za-z0-9_]*)|(?P<symbol>[\[\]\{\}\(\),;=<>./\\\-+*%!&|?:#])"
 )
 
 

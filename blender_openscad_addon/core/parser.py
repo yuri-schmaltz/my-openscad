@@ -18,6 +18,7 @@ from .ast import (
   Mirror,
   ModuleCall,
   ModuleDef,
+  ModifierStmt,
   Multmatrix,
   Offset,
   Polygon,
@@ -30,6 +31,8 @@ from .ast import (
   Square,
   TernaryExpr,
   Transform,
+  TextPrimitive,
+  ImportStmt,
   UnaryExpr,
   UseStmt,
   VarRef,
@@ -384,6 +387,11 @@ class Parser:
     return [self.parse_statement()]
 
   def parse_statement(self):
+    # Check for prefix modifier (#, %, !, *)
+    modifier = None
+    t = self.peek()
+    if t.kind == "symbol" and t.value in {"#", "%", "!", "*"}:
+      modifier = self.advance().value
     name = self.expect_ident()
 
     if name == "if":
@@ -510,14 +518,31 @@ class Parser:
     if name in {"linear_extrude", "rotate_extrude"}:
       kind = "linear" if name == "linear_extrude" else "rotate"
       body = self.parse_body_items()
-      return Extrude(kind=kind, args=args, body=body)
+      node = Extrude(kind=kind, args=args, body=body)
+      return ModifierStmt(modifier=modifier, body=node) if modifier else node
+
+    if name == "text":
+      self.expect_symbol(";")
+      node = TextPrimitive(args=args)
+      return ModifierStmt(modifier=modifier, body=node) if modifier else node
+
+    if name == "import":
+      path = args.get("arg0", args.get("file", ""))
+      if not isinstance(path, str):
+        path = str(path)
+      self.expect_symbol(";")
+      node = ImportStmt(path=path, args=args)
+      return ModifierStmt(modifier=modifier, body=node) if modifier else node
 
     if self.peek().kind == "symbol" and self.peek().value == ";":
       self.advance()
-      return ModuleCall(name=name, args=args)
+      node = ModuleCall(name=name, args=args, body=[])
+      return ModifierStmt(modifier=modifier, body=node) if modifier else node
 
-    self.expect_symbol(";")
-    return RawCall(name=name, args=args)
+    # Module call with body (children / children() inside module)
+    body = self.parse_body_items()
+    node = ModuleCall(name=name, args=args, body=body)
+    return ModifierStmt(modifier=modifier, body=node) if modifier else node
 
   def parse_program(self) -> Program:
     out = []

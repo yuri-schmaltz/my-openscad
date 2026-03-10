@@ -118,6 +118,7 @@ class ForStmt(Node):
 class ModuleCall(Node):
   name: str
   args: dict[str, Any]
+  body: list[Node] = field(default_factory=list)
 
 
 @dataclass
@@ -203,6 +204,23 @@ class ColorOp(Node):
 class RawCall(Node):
   name: str
   args: dict[str, Any]
+
+
+@dataclass
+class ModifierStmt(Node):
+  modifier: str  # "#", "%", "!", "*"
+  body: Node = None
+
+
+@dataclass
+class TextPrimitive(Node):
+  args: dict[str, Any]
+
+
+@dataclass
+class ImportStmt(Node):
+  path: str
+  args: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass

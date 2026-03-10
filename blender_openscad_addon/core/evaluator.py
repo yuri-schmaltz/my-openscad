@@ -23,6 +23,7 @@ from .ast import (
   Mirror,
   ModuleCall,
   ModuleDef,
+  ModifierStmt,
   Multmatrix,
   Offset,
   Polygon,
@@ -35,6 +36,8 @@ from .ast import (
   Square,
   TernaryExpr,
   Transform,
+  TextPrimitive,
+  ImportStmt,
   UnaryExpr,
   UseStmt,
   VarRef,
@@ -50,6 +53,7 @@ class EvalContext:
   source_path: str | None = None
   include_loader: Callable[[str], str] | None = None
   visited_includes: set[str] = field(default_factory=set)
+  module_children: list = field(default_factory=list)
 
 
 def _eval_binary(op: str, left, right):
@@ -315,6 +319,35 @@ def _eval_function_call(expr: FunctionCallExpr, ctx: EvalContext):
   if expr.name == "is_list":
     return isinstance(resolved_args[0], list) if resolved_args else False
 
+  if expr.name == "chr":
+    if resolved_args:
+      try:
+        return chr(int(float(resolved_args[0])))
+      except Exception:
+        return ""
+    return ""
+  if expr.name == "ord":
+    if resolved_args and isinstance(resolved_args[0], str) and resolved_args[0]:
+      return float(ord(resolved_args[0][0]))
+    return 0.0
+  if expr.name == "search":
+    if len(resolved_args) >= 2:
+      needle = resolved_args[0]
+      haystack = resolved_args[1]
+      if isinstance(haystack, list):
+        return [float(i) for i, v in enumerate(haystack) if v == needle]
+      if isinstance(haystack, str) and isinstance(needle, str):
+        results = []
+        sidx = 0
+        while True:
+          pos = haystack.find(needle, sidx)
+          if pos == -1:
+            break
+          results.append(float(pos))
+          sidx = pos + 1
+        return results
+    return []
+
   fn = ctx.functions.get(expr.name)
   if fn is None:
     return 0.0
@@ -345,6 +378,17 @@ def _resolve_value(value, variables: dict[str, object], ctx: EvalContext | None 
       return True
     if value.name == "false":
       return False
+    if value.name in ("PI", "pi"):
+      import math
+      return variables.get(value.name, math.pi)
+    if value.name == "undef":
+      return None
+    if value.name == "$fn" and "$fn" not in variables:
+      return 0.0
+    if value.name == "$fa" and "$fa" not in variables:
+      return 12.0
+    if value.name == "$fs" and "$fs" not in variables:
+      return 2.0
     return variables.get(value.name, 0.0)
   if isinstance(value, UnaryExpr):
     val = _resolve_value(value.value, variables, ctx)
@@ -402,6 +446,7 @@ def _resolve_value(value, variables: dict[str, object], ctx: EvalContext | None 
       source_path=ctx.source_path,
       include_loader=ctx.include_loader,
       visited_includes=ctx.visited_includes,
+      module_children=ctx.module_children,
     )
     return _eval_function_call(value, sub_ctx)
   if isinstance(value, LetExpr):
@@ -553,6 +598,26 @@ def _eval_node(node, ctx: EvalContext, transform_chain=None, color=None):
       print("ECHO: " + ", ".join(arg_strs))
       return EvalItem(node_type="noop", transform_chain=transform_chain)
 
+    if node.name == "assert":
+      args_resolved = {k: _resolve_value(v, ctx.variables, ctx) for k, v in node.args.items()}
+      cond = args_resolved.get("arg0", True)
+      if not _truthy(cond):
+        msg = args_resolved.get("arg1", "Assertion failed")
+        print(f"ASSERT FAILED: {_format_value(msg)}")
+      return EvalItem(node_type="noop", transform_chain=transform_chain)
+
+    if node.name == "children":
+      if not ctx.module_children:
+        return EvalItem(node_type="noop", transform_chain=transform_chain)
+      idx_val = node.args.get("arg0")
+      if idx_val is not None:
+        idx = int(float(_resolve_value(idx_val, ctx.variables, ctx)))
+        if 0 <= idx < len(ctx.module_children):
+          return ctx.module_children[idx]
+        return EvalItem(node_type="noop", transform_chain=transform_chain)
+      return EvalItem(node_type="group", transform_chain=transform_chain,
+                      children=list(ctx.module_children), color=color)
+
     mod = ctx.modules.get(node.name)
     if mod is None:
       return EvalItem(node_type="noop", transform_chain=transform_chain)
@@ -580,7 +645,9 @@ def _eval_node(node, ctx: EvalContext, transform_chain=None, color=None):
       source_path=ctx.source_path,
       include_loader=ctx.include_loader,
       visited_includes=ctx.visited_includes,
+      module_children=[_eval_node(ch, ctx, transform_chain, color) for ch in (node.body if hasattr(node, "body") else [])],
     )
+    bound_vars["$children"] = float(len(sub_ctx.module_children))
 
     return EvalItem(
       node_type="group",
@@ -712,6 +779,29 @@ def _eval_node(node, ctx: EvalContext, transform_chain=None, color=None):
       transform_chain=transform_chain,
       primitive=Primitive(kind="projection", args={"cut": node.cut}),
       children=child_items,
+      color=color,
+    )
+
+  if isinstance(node, ModifierStmt):
+    if node.modifier == "*":
+      return EvalItem(node_type="noop", transform_chain=transform_chain)
+    inner = _eval_node(node.body, ctx, transform_chain, color) if node.body else EvalItem(node_type="noop")
+    return inner
+
+  if isinstance(node, TextPrimitive):
+    resolve = {k: _resolve_value(v, ctx.variables, ctx) for k, v in node.args.items()}
+    return EvalItem(
+      node_type="primitive",
+      transform_chain=transform_chain,
+      primitive=Primitive(kind="text", args=resolve),
+      color=color,
+    )
+
+  if isinstance(node, ImportStmt):
+    return EvalItem(
+      node_type="import",
+      transform_chain=transform_chain,
+      primitive=Primitive(kind="import", args={"path": node.path}),
       color=color,
     )
 
