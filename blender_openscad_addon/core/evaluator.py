@@ -118,6 +118,10 @@ def _iter_values(value):
 def _eval_function_call(expr: FunctionCallExpr, ctx: EvalContext):
   resolved_args = [_resolve_value(v, ctx.variables, ctx) for v in expr.args]
 
+  if expr.name == "echo":
+    arg_strs = [_format_value(arg) for arg in resolved_args]
+    print("ECHO: " + ", ".join(arg_strs))
+    return 0.0
   if expr.name == "min":
     return min(resolved_args) if resolved_args else 0.0
   if expr.name == "max":
@@ -342,6 +346,18 @@ def _eval_node(node, ctx: EvalContext, transform_chain=None, color=None):
     )
 
   if isinstance(node, ModuleCall):
+    # Handle built-in modules
+    if node.name == "echo":
+      call_args = {k: _resolve_value(v, ctx.variables, ctx) for k, v in node.args.items()}
+      arg_values = []
+      for i in range(len(call_args)):
+        key = f"arg{i}"
+        if key in call_args:
+          arg_values.append(call_args[key])
+      arg_strs = [_format_value(arg) for arg in arg_values]
+      print("ECHO: " + ", ".join(arg_strs))
+      return EvalItem(node_type="noop", transform_chain=transform_chain)
+
     mod = ctx.modules.get(node.name)
     if mod is None:
       return EvalItem(node_type="noop", transform_chain=transform_chain)
@@ -429,3 +445,15 @@ def evaluate_program(
 ) -> list[EvalItem]:
   ctx = EvalContext(source_path=source_path, include_loader=include_loader)
   return [_eval_node(stmt, ctx) for stmt in program.statements]
+
+
+def _format_value(value):
+  if isinstance(value, bool):
+    return "true" if value else "false"
+  if isinstance(value, (int, float)):
+    return str(value)
+  if isinstance(value, str):
+    return f'"{value}"'
+  if isinstance(value, list):
+    return "[" + ", ".join(_format_value(v) for v in value) + "]"
+  return str(value)

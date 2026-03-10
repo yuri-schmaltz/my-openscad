@@ -28,6 +28,7 @@ def main():
   count_for_ternary_index = run_smoke(root / "sample_for_ternary_index.scad")
   count_comprehension = run_smoke(root / "sample_comprehension.scad")
   count_comprehension_filter = run_smoke(root / "sample_comprehension_filter.scad")
+  count_echo_debug = run_smoke(root / "sample_echo_debug.scad")
   count_hull_minkowski = run_smoke(root / "sample_hull_minkowski.scad")
 
   if (
@@ -38,6 +39,7 @@ def main():
     or count_for_ternary_index <= 0
     or count_comprehension <= 0
     or count_comprehension_filter <= 0
+    or count_echo_debug <= 0
     or count_hull_minkowski <= 0
   ):
     raise SystemExit(1)
