@@ -7,11 +7,6 @@ on:
         description: "Versao no formato MAJOR.MINOR.PATCH (ex: 0.2.0)"
         required: true
         type: string
-      target_branch:
-        description: "Branch alvo para commit/tag"
-        required: true
-        default: "master"
-        type: string
 
 jobs:
   create-version-tag:
@@ -22,8 +17,17 @@ jobs:
       - name: Checkout target branch
         uses: actions/checkout@v4
         with:
-          ref: ${{ inputs.target_branch }}
+          ref: master
           fetch-depth: 0
+
+      - name: Guard branch policy
+        shell: bash
+        run: |
+          CURRENT_BRANCH="$(git branch --show-current)"
+          if [ "$CURRENT_BRANCH" != "master" ]; then
+            echo "Release assistido permitido apenas em master. Branch atual: $CURRENT_BRANCH"
+            exit 1
+          fi
 
       - name: Setup Python
         uses: actions/setup-python@v5
@@ -65,7 +69,7 @@ jobs:
       - name: Push commit and tag
         shell: bash
         run: |
-          git push origin HEAD:${{ inputs.target_branch }}
+          git push origin HEAD:master
           git tag "v${{ inputs.version }}"
           git push origin "v${{ inputs.version }}"
 
