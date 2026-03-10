@@ -30,6 +30,27 @@ Este repositorio agora contem apenas o addon Blender e seus testes.
 
   python blender_openscad_addon/tests/test_blender_headless_integration.py
 
+## Empacotamento
+
+- Gerar zip instalavel do addon:
+
+  python scripts/package_addon.py --clean
+
+- Saida esperada:
+
+  dist/openscad_bridge-<versao>.zip
+
+## CI
+
+Pipeline em GitHub Actions:
+
+- .github/workflows/addon-ci.yml
+
+Jobs atuais:
+
+- unit-tests: smoke + suite extensa + build do zip
+- blender-headless: instala Blender no Windows e roda teste de integracao
+
 ## Instalacao do Addon
 
 1. Compacte a pasta blender_openscad_addon em .zip.

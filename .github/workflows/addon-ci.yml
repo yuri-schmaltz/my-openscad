@@ -1,0 +1,57 @@
+name: Addon CI
+
+on:
+  push:
+    branches: ["master"]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  unit-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Run smoke tests
+        run: python blender_openscad_addon/tests/test_parser_eval.py
+
+      - name: Run extensive parser/evaluator tests
+        run: python blender_openscad_addon/tests/test_extensive_parser_evaluator.py
+
+      - name: Build addon zip
+        run: python scripts/package_addon.py --clean
+
+      - name: Upload zip artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: addon-zip
+          path: dist/*.zip
+
+  blender-headless:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Blender
+        shell: pwsh
+        run: |
+          choco install blender -y --no-progress
+          $blender = (Get-Command blender.exe -ErrorAction Stop).Source
+          "BLENDER_EXE=$blender" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          Write-Host "Blender encontrado em: $blender"
+
+      - name: Run Blender headless integration
+        shell: pwsh
+        run: python blender_openscad_addon/tests/test_blender_headless_integration.py
