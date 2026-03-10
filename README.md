@@ -40,6 +40,17 @@ Este repositorio agora contem apenas o addon Blender e seus testes.
 
   dist/openscad_bridge-<versao>.zip
 
+## Versionamento
+
+- Atualizar versao de forma sincronizada no addon:
+
+  python scripts/set_addon_version.py 0.2.0
+
+Este comando atualiza:
+
+- blender_openscad_addon/blender_manifest.toml
+- blender_openscad_addon/__init__.py
+
 ## CI
 
 Pipeline em GitHub Actions:
@@ -48,8 +59,27 @@ Pipeline em GitHub Actions:
 
 Jobs atuais:
 
+- lint: analise estatica com Ruff (checks de logica)
 - unit-tests: smoke + suite extensa + build do zip
 - blender-headless: instala Blender no Windows e roda teste de integracao
+
+## Release
+
+Workflow de release:
+
+- .github/workflows/release.yml
+
+Fluxo:
+
+1. Atualize versao com scripts/set_addon_version.py.
+2. Commit e push.
+3. Crie e envie a tag no formato vMAJOR.MINOR.PATCH.
+4. O workflow gera o zip e publica no GitHub Release.
+
+Exemplo:
+
+git tag v0.2.0
+git push origin v0.2.0
 
 ## Instalacao do Addon
 
