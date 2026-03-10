@@ -1,0 +1,65 @@
+Microsoft Visual Studio 2022
+----------------------------
+
+The Visual Studio solution OpenCSG_vc2022.sln assumes that freeglut
+is put in a freeglut/ subdirecty in the OpenCSG installation directory.
+This works, for example, with the freeglut 3.0.0 MSVC package available
+from https://www.transmissionzero.co.uk/software/freeglut-devel
+
+The Visual Studio solutions automatically builds GLEW, the opencsg
+lib, and the example. The solution allows to create both 64- and 32-bit
+builds. To run the example, you must copy the freeglut.dll
+into the directory example/Release/ or example/Debug/ where the
+opencsgexample.exe has been built. Be sure to pick the correct
+64- or 32-bit version of the dll.
+
+
+Linux and MacOSX
+----------------
+
+1) As prerequisites, you must install OpenGL development packages,
+   and, for the example application, glut. To create the makefiles,
+   additionally you need CMake.
+
+2) Just type:
+
+   cmake CMakeLists.txt
+
+   This will generate the makefiles in the src and example directory.
+   To create makefiles with optimizations enabled, maybe type instead
+ 
+   cmake -DCMAKE_BUILD_TYPE=Release CMakeLists.txt
+
+   Then type:
+
+   make
+
+3) The OpenCSG library will have been build in src/, and the example
+   "opencsgexample" will reside in the example/ directory. To run the
+   opencsg example, you must ensure that libopencsg.so lib is in your
+   LD_LIBRARY_PATH (e.G., one way to do this is to copy it to /usr/local/lib
+   and running "ldconfig -v"). 'make install' is an automatic way to
+   copy the build and the example into /usr/local (requires write access
+   to /usr/local)
+
+
+Microsoft Visual Studio 6
+-------------------------
+
+The Visual Studio 6 solution OpenCSG.dsw assumes that the original
+GLUT for Windows is setup as described in
+https://user.xmission.com/~nate/glut.html
+
+The solution automatically builds the opencsg lib, and the example.
+
+
+Dev-C++ 5.11
+------------
+
+As prerequisite, get the freeglut 3.0.0 MinGW Package from
+https://www.transmissionzero.co.uk/software/freeglut-devel/
+and put it under freeglut into the opencsg directory.
+Open OpenCSG.dev
+Compile
+Ensure that freeglut.dll is in the same directory as the
+generated OpenCSG.exe, and start OpenCSG.exe.

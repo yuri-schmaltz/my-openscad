@@ -1,0 +1,492 @@
+[Project]
+FileName=OpenCSG.dev
+Name=OpenCSG
+Ver=2
+IsCpp=1
+Type=0
+Compiler=-D__GNUWIN32__ -W -Wall -DWIN32 -DNDEBUG -D_WINDOWS_@@_
+CppCompiler=-D__GNUWIN32__ -W -Wall -DWIN32 -DNDEBUG -D_WINDOWS_@@_
+Includes=include;glew/include;.
+Linker=-lopengl32_@@_-lglu32_@@_-lfreeglut_@@_
+Libs=freeglut\lib
+UnitCount=39
+Folders="Header Files","Source Files","Source Files/OpenCSG","Source Files/OpenCSGexample"
+ObjFiles=
+PrivateResource=
+ResourceIncludes=
+MakeIncludes=
+Icon=
+ExeOutput=
+ObjectOutput=
+OverrideOutput=0
+OverrideOutputName=OpenCSG.exe
+HostApplication=
+CommandLine=
+IncludeVersionInfo=0
+SupportXPThemes=0
+CompilerSet=3
+CompilerSettings=0000000100000000000000000
+UseCustomMakefile=0
+CustomMakefile=
+LogOutput=
+LogOutputEnabled=0
+
+[Unit1]
+FileName=src\area.cpp
+Folder=Source Files/OpenCSG
+Compile=1
+CompileCpp=1
+Link=1
+Priority=1000
+OverrideBuildCmd=0
+BuildCmd=
+
+[Unit2]
+FileName=src\area.h
+Folder=Source Files/OpenCSG
+Compile=1
+CompileCpp=1
+Link=1
+Priority=1000
+OverrideBuildCmd=0
+BuildCmd=
+
+[Unit3]
+FileName=src\batch.cpp
+Folder=Source Files/OpenCSG
+Compile=1
+CompileCpp=1
+Link=1
+Priority=1000
+OverrideBuildCmd=0
+BuildCmd=
+
+[Unit4]
+FileName=src\batch.h
+Folder=Source Files/OpenCSG
+Compile=1
+CompileCpp=1
+Link=1
+Priority=1000
+OverrideBuildCmd=0
+BuildCmd=
+
+[Unit5]
+FileName=src\channelManager.cpp
+Folder=Source Files/OpenCSG
+Compile=1
+CompileCpp=1
+Link=1
+Priority=1000
+OverrideBuildCmd=0
+BuildCmd=
+
+[Unit6]
+FileName=src\channelManager.h
+Folder=Source Files/OpenCSG
+Compile=1
+CompileCpp=1
+Link=1
+Priority=1000
+OverrideBuildCmd=0
+BuildCmd=
+
+[Unit7]
+FileName=src\occlusionQuery.cpp
+Folder=Source Files/OpenCSG
+Compile=1
+CompileCpp=1
+Link=1
+Priority=1000
+OverrideBuildCmd=0
+BuildCmd=
+
+[Unit8]
+FileName=src\occlusionQuery.h
+Folder=Source Files/OpenCSG
+Compile=1
+CompileCpp=1
+Link=1
+Priority=1000
+OverrideBuildCmd=0
+BuildCmd=
+
+[Unit9]
+FileName=src\opencsgRender.cpp
+Folder=Source Files/OpenCSG
+Compile=1
+CompileCpp=1
+Link=1
+Priority=1000
+OverrideBuildCmd=0
+BuildCmd=
+
+[Unit10]
+FileName=src\opencsgRender.h
+Folder=Source Files/OpenCSG
+Compile=1
+CompileCpp=1
+Link=1
+Priority=1000
+OverrideBuildCmd=0
+BuildCmd=
+
+[Unit11]
+FileName=src\openglHelper.cpp
+Folder=Source Files/OpenCSG
+Compile=1
+CompileCpp=1
+Link=1
+Priority=1000
+OverrideBuildCmd=0
+BuildCmd=
+
+[Unit12]
+FileName=src\openglHelper.h
+Folder=Source Files/OpenCSG
+Compile=1
+CompileCpp=1
+Link=1
+Priority=1000
+OverrideBuildCmd=0
+BuildCmd=
+
+[Unit13]
+FileName=src\primitive.cpp
+Folder=Source Files/OpenCSG
+Compile=1
+CompileCpp=1
+Link=1
+Priority=1000
+OverrideBuildCmd=0
+BuildCmd=
+
+[Unit14]
+FileName=src\primitiveHelper.cpp
+Folder=Source Files/OpenCSG
+Compile=1
+CompileCpp=1
+Link=1
+Priority=1000
+OverrideBuildCmd=0
+BuildCmd=
+
+[Unit15]
+FileName=src\primitiveHelper.h
+Folder=Source Files/OpenCSG
+Compile=1
+CompileCpp=1
+Link=1
+Priority=1000
+OverrideBuildCmd=0
+BuildCmd=
+
+[Unit16]
+FileName=src\renderGoldfeather.cpp
+Folder=Source Files/OpenCSG
+Compile=1
+CompileCpp=1
+Link=1
+Priority=1000
+OverrideBuildCmd=0
+BuildCmd=
+
+[Unit17]
+FileName=src\renderSCS.cpp
+Folder=Source Files/OpenCSG
+Compile=1
+CompileCpp=1
+Link=1
+Priority=1000
+OverrideBuildCmd=0
+BuildCmd=
+
+[Unit20]
+FileName=src\openglExt.h
+Folder=Source Files/OpenCSG
+Compile=1
+CompileCpp=1
+Link=1
+Priority=1000
+OverrideBuildCmd=0
+BuildCmd=
+
+[Unit21]
+FileName=include\opencsg.h
+Folder=Header Files
+Compile=1
+CompileCpp=1
+Link=1
+Priority=1000
+OverrideBuildCmd=0
+BuildCmd=
+
+[Unit23]
+FileName=example\displaylistPrimitive.h
+Folder=Source Files/OpenCSGexample
+Compile=1
+CompileCpp=1
+Link=1
+Priority=1000
+OverrideBuildCmd=0
+BuildCmd=
+
+[Unit24]
+FileName=example\displaylistPrimitive.cpp
+Folder=Source Files/OpenCSGexample
+Compile=1
+CompileCpp=1
+Link=1
+Priority=1000
+OverrideBuildCmd=0
+BuildCmd=
+
+[Unit25]
+FileName=src\opencsgConfig.h
+Folder=Source Files/OpenCSG
+Compile=1
+CompileCpp=1
+Link=1
+Priority=1000
+OverrideBuildCmd=0
+BuildCmd=
+
+[Unit26]
+FileName=src\settings.h
+CompileCpp=1
+Folder=Source Files/OpenCSG
+Compile=1
+Link=1
+Priority=1000
+OverrideBuildCmd=0
+BuildCmd=
+
+[Unit27]
+FileName=src\frameBufferObject.cpp
+CompileCpp=1
+Folder=Source Files/OpenCSG
+Compile=1
+Link=1
+Priority=1000
+OverrideBuildCmd=0
+BuildCmd=
+
+[Unit28]
+FileName=src\frameBufferObject.h
+CompileCpp=1
+Folder=Source Files/OpenCSG
+Compile=1
+Link=1
+Priority=1000
+OverrideBuildCmd=0
+BuildCmd=
+
+[Unit29]
+FileName=src\offscreenBuffer.h
+CompileCpp=1
+Folder=Source Files/OpenCSG
+Compile=1
+Link=1
+Priority=1000
+OverrideBuildCmd=0
+BuildCmd=
+
+[Unit30]
+FileName=src\settings.cpp
+CompileCpp=1
+Folder=Source Files/OpenCSG
+Compile=1
+Link=1
+Priority=1000
+OverrideBuildCmd=0
+BuildCmd=
+
+[Unit31]
+FileName=src\frameBufferObjectExt.cpp
+CompileCpp=1
+Folder=Source Files/OpenCSG
+Compile=1
+Link=1
+Priority=1000
+OverrideBuildCmd=0
+BuildCmd=
+
+[Unit32]
+FileName=src\sequencer.h
+CompileCpp=1
+Folder=Source Files/OpenCSG
+Compile=1
+Link=1
+Priority=1000
+OverrideBuildCmd=0
+BuildCmd=
+
+[VersionInfo]
+Major=0
+Minor=1
+Release=1
+Build=1
+LanguageID=1033
+CharsetID=1252
+CompanyName=
+FileVersion=0.1.1.1
+FileDescription=Developed using the Dev-C++ IDE
+InternalName=
+LegalCopyright=
+LegalTrademarks=
+OriginalFilename=OpenCSG.exe
+ProductName=OpenCSG
+ProductVersion=0.1
+AutoIncBuildNr=0
+SyncProduct=0
+
+[Unit32]
+FileName=src\frameBufferObjectExt.h
+CompileCpp=1
+Folder=Source Files/OpenCSG
+Compile=1
+Link=1
+Priority=1000
+OverrideBuildCmd=0
+BuildCmd=
+
+[Unit33]
+FileName=src\context.h
+CompileCpp=1
+Folder=Source Files/OpenCSG
+Compile=1
+Link=1
+Priority=1000
+OverrideBuildCmd=0
+BuildCmd=
+
+[Unit34]
+FileName=src\context.cpp
+CompileCpp=1
+Folder=Source Files/OpenCSG
+Compile=1
+Link=1
+Priority=1000
+OverrideBuildCmd=0
+BuildCmd=
+
+[Unit38]
+FileName=src\glad\include\KHR\khrplatform.h
+CompileCpp=1
+Folder=Source Files
+Compile=1
+Link=1
+Priority=1000
+OverrideBuildCmd=0
+BuildCmd=
+
+[Unit39]
+FileName=src\sequencer.h
+CompileCpp=1
+Folder=Source Files/OpenCSG
+Compile=1
+Link=1
+Priority=1000
+OverrideBuildCmd=0
+BuildCmd=
+
+[Unit40]
+FileName=src\frameBufferObjectExt.h
+CompileCpp=1
+Folder=Source Files/OpenCSG
+Compile=1
+Link=1
+Priority=1000
+OverrideBuildCmd=0
+BuildCmd=
+
+[Unit41]
+FileName=src\context.h
+CompileCpp=1
+Folder=Source Files/OpenCSG
+Compile=1
+Link=1
+Priority=1000
+OverrideBuildCmd=0
+BuildCmd=
+
+[Unit42]
+FileName=src\context.cpp
+CompileCpp=1
+Folder=Source Files/OpenCSG
+Compile=1
+Link=1
+Priority=1000
+OverrideBuildCmd=0
+BuildCmd=
+
+[Unit43]
+FileName=src\context.cpp
+CompileCpp=1
+Folder=Source Files/OpenCSG
+Compile=1
+Link=1
+Priority=1000
+OverrideBuildCmd=0
+BuildCmd=
+
+[Unit35]
+FileName=example\includeGl.h
+CompileCpp=1
+Folder=Source Files/OpenCSGexample
+Compile=1
+Link=1
+Priority=1000
+OverrideBuildCmd=0
+BuildCmd=
+
+[Unit18]
+FileName=src\scissorMemo.cpp
+CompileCpp=1
+Folder=Source Files/OpenCSG
+Compile=1
+Link=1
+Priority=1000
+OverrideBuildCmd=0
+BuildCmd=
+
+[Unit19]
+FileName=src\scissorMemo.h
+CompileCpp=1
+Folder=Source Files/OpenCSG
+Compile=1
+Link=1
+Priority=1000
+OverrideBuildCmd=0
+BuildCmd=
+
+[Unit22]
+FileName=example\main.cpp
+CompileCpp=1
+Folder=Source Files/OpenCSGexample
+Compile=1
+Link=1
+Priority=1000
+OverrideBuildCmd=0
+BuildCmd=
+
+[Unit36]
+FileName=src\glad\src\gl.cpp
+CompileCpp=1
+Folder=Source Files/OpenCSG
+Compile=1
+Link=1
+Priority=1000
+OverrideBuildCmd=0
+BuildCmd=
+
+[Unit37]
+FileName=src\glad\include\glad\gl.h
+CompileCpp=1
+Folder=Source Files/OpenCSG
+Compile=1
+Link=1
+Priority=1000
+OverrideBuildCmd=0
+BuildCmd=
+
