@@ -48,6 +48,12 @@ class RangeExpr(Node):
 
 
 @dataclass
+class ListComprehensionExpr(Node):
+  bindings: list[tuple[str, Any]] = field(default_factory=list)
+  expr: Any = None
+
+
+@dataclass
 class FunctionCallExpr(Node):
   name: str
   args: list[Any] = field(default_factory=list)

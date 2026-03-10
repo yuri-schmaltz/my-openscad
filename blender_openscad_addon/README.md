@@ -20,6 +20,8 @@ Addon para Blender 5.x+ que implementa um fluxo OpenSCAD-like dentro do Blender.
   - operador ternario: `cond ? a : b`
   - indexacao em vetores/listas: `v[i]`, incluindo encadeamento `v[i][j]`
   - `for (i=[ini:fim]) { ... }` e `for (i=[ini:passo:fim]) { ... }`
+  - list comprehension: `[for (i=[ini:fim]) expr]`
+  - `hull()` e `minkowski()` com fallback aproximado para uniao no backend Blender
 - Preview de geometria em colecao dedicada `OpenSCAD Preview`.
 - Render com aplicacao opcional de boolean modifiers.
 - Export de mesh selecionada para script `.scad` via `polyhedron()`.

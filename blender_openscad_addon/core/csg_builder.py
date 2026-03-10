@@ -94,9 +94,12 @@ def _compose_boolean(base: bpy.types.Object, other: bpy.types.Object, kind: str)
     "union": "UNION",
     "difference": "DIFFERENCE",
     "intersection": "INTERSECT",
+    # Fallback aproximado para manter fluxo funcional no Blender.
+    "hull": "UNION",
+    "minkowski": "UNION",
   }
   mod = base.modifiers.new(name=f"OpenSCAD_{kind}", type="BOOLEAN")
-  mod.operation = op_map[kind]
+  mod.operation = op_map.get(kind, "UNION")
   mod.object = other
   other.hide_set(True)
   other.hide_render = True

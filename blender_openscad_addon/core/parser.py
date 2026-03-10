@@ -12,6 +12,7 @@ from .ast import (
   IndexExpr,
   IncludeStmt,
   LetExpr,
+  ListComprehensionExpr,
   ModuleCall,
   ModuleDef,
   Primitive,
@@ -95,6 +96,22 @@ class Parser:
     self.expect_symbol("[")
     if self.match_symbol("]"):
       return []
+
+    if self.match_keyword("for"):
+      self.expect_symbol("(")
+      bindings: list[tuple[str, object]] = []
+      while True:
+        var_name = self.expect_ident()
+        self.expect_symbol("=")
+        iterable = self.parse_expression()
+        bindings.append((var_name, iterable))
+        if self.match_symbol(","):
+          continue
+        self.expect_symbol(")")
+        break
+      expr = self.parse_expression()
+      self.expect_symbol("]")
+      return ListComprehensionExpr(bindings=bindings, expr=expr)
 
     first = self.parse_expression()
     if self.match_symbol(":"):
@@ -418,7 +435,7 @@ class Parser:
       body = self.parse_body_items()
       return Transform(kind=name, values=vals, body=body)
 
-    if name in {"union", "difference", "intersection"}:
+    if name in {"union", "difference", "intersection", "hull", "minkowski"}:
       body = self.parse_body_items()
       return BooleanOp(kind=name, body=body)
 

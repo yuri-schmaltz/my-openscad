@@ -17,6 +17,7 @@ from .ast import (
   IndexExpr,
   IncludeStmt,
   LetExpr,
+  ListComprehensionExpr,
   ModuleCall,
   ModuleDef,
   Primitive,
@@ -182,6 +183,23 @@ def _resolve_value(value, variables: dict[str, object], ctx: EvalContext | None 
     end = _resolve_value(value.end, variables, ctx)
     step = _resolve_value(value.step, variables, ctx) if value.step is not None else None
     return _expand_range(start, end, step)
+  if isinstance(value, ListComprehensionExpr):
+    out: list[object] = []
+
+    def run_binding(binding_index: int, local_vars: dict[str, object]):
+      if binding_index >= len(value.bindings):
+        out.append(_resolve_value(value.expr, local_vars, ctx))
+        return
+
+      var_name, iterable_expr = value.bindings[binding_index]
+      iter_values = _resolve_value(iterable_expr, local_vars, ctx)
+      for v in _iter_values(iter_values):
+        next_vars = dict(local_vars)
+        next_vars[var_name] = v
+        run_binding(binding_index + 1, next_vars)
+
+    run_binding(0, dict(variables))
+    return out
   if isinstance(value, FunctionCallExpr):
     if ctx is None:
       return 0.0

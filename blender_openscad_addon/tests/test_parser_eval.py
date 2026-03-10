@@ -26,6 +26,8 @@ def main():
   count_functions = run_smoke(root / "sample_main_functions.scad")
   count_if_let = run_smoke(root / "sample_if_let.scad")
   count_for_ternary_index = run_smoke(root / "sample_for_ternary_index.scad")
+  count_comprehension = run_smoke(root / "sample_comprehension.scad")
+  count_hull_minkowski = run_smoke(root / "sample_hull_minkowski.scad")
 
   if (
     count_include <= 0
@@ -33,6 +35,8 @@ def main():
     or count_functions <= 0
     or count_if_let <= 0
     or count_for_ternary_index <= 0
+    or count_comprehension <= 0
+    or count_hull_minkowski <= 0
   ):
     raise SystemExit(1)
 
