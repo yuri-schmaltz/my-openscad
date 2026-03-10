@@ -155,6 +155,24 @@ def _eval_function_call(expr: FunctionCallExpr, ctx: EvalContext):
               return item[1]
       return 0.0
     return 0.0
+  if expr.name == "round":
+    if resolved_args:
+      return float(round(float(resolved_args[0])))
+    return 0.0
+  if expr.name == "floor":
+    if resolved_args:
+      import math
+      return float(math.floor(float(resolved_args[0])))
+    return 0.0
+  if expr.name == "ceil":
+    if resolved_args:
+      import math
+      return float(math.ceil(float(resolved_args[0])))
+    return 0.0
+  if expr.name == "pow":
+    if len(resolved_args) >= 2:
+      return float(resolved_args[0]) ** float(resolved_args[1])
+    return 0.0
 
   fn = ctx.functions.get(expr.name)
   if fn is None:
@@ -235,7 +253,16 @@ def _resolve_value(value, variables: dict[str, object], ctx: EvalContext | None 
   if isinstance(value, FunctionCallExpr):
     if ctx is None:
       return 0.0
-    return _eval_function_call(value, ctx)
+    # Create a new context with updated variables for function calls
+    sub_ctx = EvalContext(
+      modules=ctx.modules,
+      functions=ctx.functions,
+      variables=variables,
+      source_path=ctx.source_path,
+      include_loader=ctx.include_loader,
+      visited_includes=ctx.visited_includes,
+    )
+    return _eval_function_call(value, sub_ctx)
   if isinstance(value, LetExpr):
     local_vars = dict(variables)
     for name, expr in value.bindings:

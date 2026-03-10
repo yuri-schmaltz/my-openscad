@@ -30,6 +30,7 @@ def main():
   count_comprehension_filter = run_smoke(root / "sample_comprehension_filter.scad")
   count_echo_debug = run_smoke(root / "sample_echo_debug.scad")
   count_builtins = run_smoke(root / "sample_builtins.scad")
+  count_math_functions = run_smoke(root / "sample_math_functions.scad")
   count_hull_minkowski = run_smoke(root / "sample_hull_minkowski.scad")
 
   if (
@@ -42,6 +43,7 @@ def main():
     or count_comprehension_filter <= 0
     or count_echo_debug <= 0
     or count_builtins <= 0
+    or count_math_functions <= 0
     or count_hull_minkowski <= 0
   ):
     raise SystemExit(1)
