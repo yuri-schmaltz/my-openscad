@@ -15,6 +15,34 @@ class Program(Node):
 
 
 @dataclass
+class VarRef(Node):
+  name: str
+
+
+@dataclass
+class IncludeStmt(Node):
+  path: str
+
+
+@dataclass
+class UseStmt(Node):
+  path: str
+
+
+@dataclass
+class ModuleDef(Node):
+  name: str
+  params: list[tuple[str, Any]] = field(default_factory=list)
+  body: list[Node] = field(default_factory=list)
+
+
+@dataclass
+class ModuleCall(Node):
+  name: str
+  args: dict[str, Any]
+
+
+@dataclass
 class Primitive(Node):
   kind: str
   args: dict[str, Any]

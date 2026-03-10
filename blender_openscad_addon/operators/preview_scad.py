@@ -26,7 +26,8 @@ class OPENSCAD_OT_preview(bpy.types.Operator):
     source = text.as_string()
     try:
       program = parse_scad(source)
-      eval_items = evaluate_program(program)
+      source_path = props.source_path or None
+      eval_items = evaluate_program(program, source_path=source_path)
       objects = build_scene(context.scene, eval_items)
     except Exception as ex:
       self.report({"ERROR"}, f"Erro de parse/execucao: {ex}")

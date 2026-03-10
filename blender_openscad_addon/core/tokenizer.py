@@ -5,7 +5,7 @@ from dataclasses import dataclass
 
 
 TOKEN_REGEX = re.compile(
-  r"\s*(?:(?P<number>-?\d+(?:\.\d+)?)|(?P<ident>[A-Za-z_][A-Za-z0-9_]*)|(?P<symbol>[\[\]\{\}\(\),;=]))"
+  r"\s*(?:(?P<number>-?\d+(?:\.\d+)?)|(?P<string>\"[^\"\\]*(?:\\.[^\"\\]*)*\")|(?P<ident>[A-Za-z_][A-Za-z0-9_]*)|(?P<symbol>[\[\]\{\}\(\),;=<>./\\-]))"
 )
 
 
@@ -43,6 +43,8 @@ def tokenize(source: str) -> list[Token]:
     pos = m.end()
     if m.group("number") is not None:
       out.append(Token("number", m.group("number"), m.start()))
+    elif m.group("string") is not None:
+      out.append(Token("string", m.group("string"), m.start()))
     elif m.group("ident") is not None:
       out.append(Token("ident", m.group("ident"), m.start()))
     else:

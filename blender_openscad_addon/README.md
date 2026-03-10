@@ -10,6 +10,8 @@ Addon para Blender 5.x+ que implementa um fluxo OpenSCAD-like dentro do Blender.
   - `translate()`, `rotate()`, `scale()`
   - `union()`, `difference()`, `intersection()`
   - `color()`
+  - `include <...>;`, `include "...";`, `use <...>;`, `use "...";`
+  - `module nome(params) { ... }` e chamada de modulo
 - Preview de geometria em colecao dedicada `OpenSCAD Preview`.
 - Render com aplicacao opcional de boolean modifiers.
 - Export de mesh selecionada para script `.scad` via `polyhedron()`.
@@ -29,9 +31,18 @@ Addon para Blender 5.x+ que implementa um fluxo OpenSCAD-like dentro do Blender.
 4. Clique `Render` para aplicar booleanos.
 5. Selecione objeto e clique `Export SCAD` para gerar script.
 
+## Exemplos e smoke test
+
+- Exemplos SCAD com `include/use` e `module` estao em `tests/`.
+- Para smoke test do parser/evaluator (fora do Blender):
+
+```bash
+python blender_openscad_addon/tests/test_parser_eval.py
+```
+
 ## Limites desta versao
 
-Este pacote entrega uma base funcional, mas nao implementa 100% da linguagem e do engine do OpenSCAD original (ex.: parser completo, todos os modulos/funcoes, caching, kernel CGAL/manifold, validacao completa de semanticas e paridade total de CLI).
+Este pacote entrega uma base funcional, mas nao implementa 100% da linguagem e do engine do OpenSCAD original (ex.: parser completo, todas as funcoes builtin, semantica completa de expressoes, caching, kernel CGAL/manifold, validacao completa de semanticas e paridade total de CLI).
 
 ## Roadmap para paridade ampliada
 
