@@ -1,12 +1,15 @@
 from __future__ import annotations
 
 from .ast import (
+  Assignment,
   BinaryExpr,
   BooleanOp,
   ColorOp,
   FunctionCallExpr,
   FunctionDef,
+  IfStmt,
   IncludeStmt,
+  LetExpr,
   ModuleCall,
   ModuleDef,
   Primitive,
@@ -41,6 +44,30 @@ class Parser:
     t = self.advance()
     if t.kind != "symbol" or t.value != sym:
       raise ParseError(f"Esperado '{sym}' na posicao {t.index}")
+
+  def match_symbol(self, sym: str) -> bool:
+    t = self.peek()
+    if t.kind == "symbol" and t.value == sym:
+      self.advance()
+      return True
+    return False
+
+  def match_symbol_pair(self, a: str, b: str) -> bool:
+    if self.idx + 1 >= len(self.tokens):
+      return False
+    t1 = self.tokens[self.idx]
+    t2 = self.tokens[self.idx + 1]
+    if t1.kind == "symbol" and t1.value == a and t2.kind == "symbol" and t2.value == b:
+      self.idx += 2
+      return True
+    return False
+
+  def match_keyword(self, name: str) -> bool:
+    t = self.peek()
+    if t.kind == "ident" and t.value == name:
+      self.advance()
+      return True
+    return False
 
   def expect_ident(self) -> str:
     t = self.advance()
@@ -122,7 +149,57 @@ class Parser:
     return self.parse_expression()
 
   def parse_expression(self):
-    return self.parse_additive()
+    return self.parse_logical_or()
+
+  def parse_logical_or(self):
+    left = self.parse_logical_and()
+    while self.match_symbol_pair("|", "|"):
+      right = self.parse_logical_and()
+      left = BinaryExpr(op="||", left=left, right=right)
+    return left
+
+  def parse_logical_and(self):
+    left = self.parse_equality()
+    while self.match_symbol_pair("&", "&"):
+      right = self.parse_equality()
+      left = BinaryExpr(op="&&", left=left, right=right)
+    return left
+
+  def parse_equality(self):
+    left = self.parse_relational()
+    while True:
+      if self.match_symbol_pair("=", "="):
+        right = self.parse_relational()
+        left = BinaryExpr(op="==", left=left, right=right)
+        continue
+      if self.match_symbol_pair("!", "="):
+        right = self.parse_relational()
+        left = BinaryExpr(op="!=", left=left, right=right)
+        continue
+      break
+    return left
+
+  def parse_relational(self):
+    left = self.parse_additive()
+    while True:
+      if self.match_symbol_pair("<", "="):
+        right = self.parse_additive()
+        left = BinaryExpr(op="<=", left=left, right=right)
+        continue
+      if self.match_symbol_pair(">", "="):
+        right = self.parse_additive()
+        left = BinaryExpr(op=">=", left=left, right=right)
+        continue
+      if self.match_symbol("<"):
+        right = self.parse_additive()
+        left = BinaryExpr(op="<", left=left, right=right)
+        continue
+      if self.match_symbol(">"):
+        right = self.parse_additive()
+        left = BinaryExpr(op=">", left=left, right=right)
+        continue
+      break
+    return left
 
   def parse_additive(self):
     left = self.parse_multiplicative()
@@ -141,10 +218,27 @@ class Parser:
     return left
 
   def parse_unary(self):
-    if self.peek().kind == "symbol" and self.peek().value in {"+", "-"}:
+    if self.peek().kind == "symbol" and self.peek().value in {"+", "-", "!"}:
       op = self.advance().value
       return UnaryExpr(op=op, value=self.parse_unary())
     return self.parse_primary()
+
+  def parse_let_expr(self):
+    bindings: list[tuple[str, object]] = []
+    self.expect_symbol("(")
+    while True:
+      if self.match_symbol(")"):
+        break
+      name = self.expect_ident()
+      self.expect_symbol("=")
+      value = self.parse_expression()
+      bindings.append((name, value))
+      if self.match_symbol(","):
+        continue
+      self.expect_symbol(")")
+      break
+    expr = self.parse_expression()
+    return LetExpr(bindings=bindings, expr=expr)
 
   def parse_primary(self):
     t = self.peek()
@@ -161,6 +255,8 @@ class Parser:
       return expr
     if t.kind == "ident":
       name = self.advance().value
+      if name == "let" and self.peek().kind == "symbol" and self.peek().value == "(":
+        return self.parse_let_expr()
       if self.peek().kind == "symbol" and self.peek().value == "(":
         return FunctionCallExpr(name=name, args=self.parse_call_args_positional())
       return VarRef(name)
@@ -224,6 +320,16 @@ class Parser:
   def parse_statement(self):
     name = self.expect_ident()
 
+    if name == "if":
+      self.expect_symbol("(")
+      condition = self.parse_expression()
+      self.expect_symbol(")")
+      then_body = self.parse_body_items()
+      else_body = []
+      if self.match_keyword("else"):
+        else_body = self.parse_body_items()
+      return IfStmt(condition=condition, then_body=then_body, else_body=else_body)
+
     if name == "include":
       path = self.parse_path_value()
       self.expect_symbol(";")
@@ -247,6 +353,11 @@ class Parser:
       expr = self.parse_expression()
       self.expect_symbol(";")
       return FunctionDef(name=function_name, params=params, expr=expr)
+
+    if self.match_symbol("="):
+      expr = self.parse_expression()
+      self.expect_symbol(";")
+      return Assignment(name=name, expr=expr)
 
     args = self.parse_args()
 

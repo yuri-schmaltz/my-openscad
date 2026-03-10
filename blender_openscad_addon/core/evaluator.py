@@ -5,13 +5,16 @@ from pathlib import Path
 from typing import Callable
 
 from .ast import (
+  Assignment,
   BinaryExpr,
   BooleanOp,
   ColorOp,
   EvalItem,
   FunctionCallExpr,
   FunctionDef,
+  IfStmt,
   IncludeStmt,
+  LetExpr,
   ModuleCall,
   ModuleDef,
   Primitive,
@@ -46,7 +49,35 @@ def _eval_binary(op: str, left, right):
     return 0.0 if right == 0 else left / right
   if op == "%":
     return 0.0 if right == 0 else left % right
+  if op == "<":
+    return left < right
+  if op == ">":
+    return left > right
+  if op == "<=":
+    return left <= right
+  if op == ">=":
+    return left >= right
+  if op == "==":
+    return left == right
+  if op == "!=":
+    return left != right
+  if op == "&&":
+    return _truthy(left) and _truthy(right)
+  if op == "||":
+    return _truthy(left) or _truthy(right)
   return 0.0
+
+
+def _truthy(value) -> bool:
+  if isinstance(value, bool):
+    return value
+  if isinstance(value, (int, float)):
+    return value != 0
+  if isinstance(value, str):
+    return len(value) > 0
+  if isinstance(value, list):
+    return len(value) > 0
+  return bool(value)
 
 
 def _eval_function_call(expr: FunctionCallExpr, ctx: EvalContext):
@@ -85,11 +116,17 @@ def _eval_function_call(expr: FunctionCallExpr, ctx: EvalContext):
 
 def _resolve_value(value, variables: dict[str, object], ctx: EvalContext | None = None):
   if isinstance(value, VarRef):
+    if value.name == "true":
+      return True
+    if value.name == "false":
+      return False
     return variables.get(value.name, 0.0)
   if isinstance(value, UnaryExpr):
     val = _resolve_value(value.value, variables, ctx)
     if value.op == "-":
       return -float(val)
+    if value.op == "!":
+      return not _truthy(val)
     return float(val)
   if isinstance(value, BinaryExpr):
     left = _resolve_value(value.left, variables, ctx)
@@ -99,6 +136,11 @@ def _resolve_value(value, variables: dict[str, object], ctx: EvalContext | None 
     if ctx is None:
       return 0.0
     return _eval_function_call(value, ctx)
+  if isinstance(value, LetExpr):
+    local_vars = dict(variables)
+    for name, expr in value.bindings:
+      local_vars[name] = _resolve_value(expr, local_vars, ctx)
+    return _resolve_value(value.expr, local_vars, ctx)
   if isinstance(value, list):
     return [_resolve_value(v, variables, ctx) for v in value]
   return value
@@ -183,6 +225,20 @@ def _eval_node(node, ctx: EvalContext, transform_chain=None, color=None):
   if isinstance(node, FunctionDef):
     ctx.functions[node.name] = node
     return EvalItem(node_type="noop", transform_chain=transform_chain)
+
+  if isinstance(node, Assignment):
+    ctx.variables[node.name] = _resolve_value(node.expr, ctx.variables, ctx)
+    return EvalItem(node_type="noop", transform_chain=transform_chain)
+
+  if isinstance(node, IfStmt):
+    cond = _resolve_value(node.condition, ctx.variables, ctx)
+    chosen = node.then_body if _truthy(cond) else node.else_body
+    return EvalItem(
+      node_type="group",
+      transform_chain=transform_chain,
+      children=[_eval_node(ch, ctx, transform_chain, color) for ch in chosen],
+      color=color,
+    )
 
   if isinstance(node, ModuleCall):
     mod = ctx.modules.get(node.name)

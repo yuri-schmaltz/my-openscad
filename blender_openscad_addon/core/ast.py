@@ -34,6 +34,12 @@ class FunctionCallExpr(Node):
 
 
 @dataclass
+class LetExpr(Node):
+  bindings: list[tuple[str, Any]] = field(default_factory=list)
+  expr: Any = None
+
+
+@dataclass
 class VarRef(Node):
   name: str
 
@@ -60,6 +66,19 @@ class FunctionDef(Node):
   name: str
   params: list[tuple[str, Any]] = field(default_factory=list)
   expr: Any = None
+
+
+@dataclass
+class Assignment(Node):
+  name: str
+  expr: Any
+
+
+@dataclass
+class IfStmt(Node):
+  condition: Any
+  then_body: list[Node] = field(default_factory=list)
+  else_body: list[Node] = field(default_factory=list)
 
 
 @dataclass
