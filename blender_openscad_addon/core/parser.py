@@ -22,6 +22,7 @@ from .ast import (
   Multmatrix,
   Offset,
   Polygon,
+  Polyhedron,
   Primitive,
   Program,
   Projection,
@@ -507,6 +508,14 @@ class Parser:
       points = args.get("arg0", args.get("points"))
       paths = args.get("arg1", args.get("paths"))
       node = Polygon(points=points, paths=paths)
+      return ModifierStmt(modifier=modifier, body=node) if modifier else node
+
+    if name == "polyhedron":
+      self.expect_symbol(";")
+      points = args.get("arg0", args.get("points"))
+      faces = args.get("arg1", args.get("faces"))
+      convexity = args.get("convexity")
+      node = Polyhedron(points=points, faces=faces, convexity=convexity)
       return ModifierStmt(modifier=modifier, body=node) if modifier else node
 
     if name == "circle":

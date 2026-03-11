@@ -30,6 +30,11 @@ class OPENSCAD_OT_preview(bpy.types.Operator):
       eval_items = evaluate_program(program, source_path=source_path)
       objects = build_scene(context.scene, eval_items)
     except Exception as ex:
+      def draw_error(self, context):
+        self.layout.label(text="Falha no Parsing SCAD:")
+        for line in str(ex).split('\n'):
+          self.layout.label(text=line)
+      bpy.context.window_manager.popup_menu(draw_error, title="OpenSCAD Error", icon='ERROR')
       self.report({"ERROR"}, f"Erro de parse/execucao: {ex}")
       return {"CANCELLED"}
 

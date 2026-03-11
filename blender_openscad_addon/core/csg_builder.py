@@ -92,12 +92,18 @@ def _build_primitive(coll: bpy.types.Collection, primitive: Primitive, transform
     obj.scale = (float(size[0]) / 2.0, float(size[1]) / 2.0, float(size[2]) / 2.0)
   elif kind == "sphere":
     r = float(args.get("r", args.get("arg0", 1.0)))
-    bpy.ops.mesh.primitive_uv_sphere_add(radius=r, location=(0, 0, 0))
+    fn = int(float(args.get("$fn", 32))) or 32
+    # OpenSCAD subdivide spheres evenly, minimal 3 segments.
+    segments = max(4, fn)
+    rings = max(4, fn // 2)
+    bpy.ops.mesh.primitive_uv_sphere_add(radius=r, segments=segments, ring_count=rings, location=(0, 0, 0))
     obj = bpy.context.active_object
   elif kind == "cylinder":
     h = float(args.get("h", args.get("arg0", 1.0)))
     r = float(args.get("r", args.get("arg1", 1.0)))
-    bpy.ops.mesh.primitive_cylinder_add(radius=r, depth=h, location=(0, 0, h / 2.0))
+    fn = int(float(args.get("$fn", 32))) or 32
+    segments = max(3, fn)
+    bpy.ops.mesh.primitive_cylinder_add(vertices=segments, radius=r, depth=h, location=(0, 0, h / 2.0))
     obj = bpy.context.active_object
   elif kind == "polygon":
     pts = args.get("points", [])
@@ -141,6 +147,38 @@ def _build_primitive(coll: bpy.types.Collection, primitive: Primitive, transform
     bm.to_mesh(me)
     bm.free()
     obj = bpy.data.objects.new("OpenSCAD_Square", me)
+  elif kind == "polyhedron":
+    points = args.get("points", [])
+    faces = args.get("faces", [])
+    if not points or not faces or not isinstance(points, list) or not isinstance(faces, list):
+      return None
+    bm = bmesh.new()
+    verts = []
+    for pt in points:
+      if isinstance(pt, (list, tuple)) and len(pt) >= 3:
+        verts.append(bm.verts.new((float(pt[0]), float(pt[1]), float(pt[2]))))
+    
+    for face_indices in faces:
+      if isinstance(face_indices, (list, tuple)) and len(face_indices) >= 3:
+        face_verts = []
+        for idx in face_indices:
+          i = int(idx)
+          if 0 <= i < len(verts):
+            face_verts.append(verts[i])
+        if len(face_verts) >= 3:
+          try:
+            bm.faces.new(face_verts)
+          except Exception:
+            pass  # Ignora self-intersecting faces repetidas
+
+    # Limpar qualquer ponta solta para garantir validade    
+    bmesh.ops.remove_doubles(bm, verts=bm.verts, dist=0.0001)
+    bm.normal_update()
+
+    me = bpy.data.meshes.new("OpenSCAD_Polyhedron")
+    bm.to_mesh(me)
+    bm.free()
+    obj = bpy.data.objects.new("OpenSCAD_Polyhedron", me)
   elif kind == "text":
     text_val = str(args.get("text", args.get("arg0", "")))
     size_val = float(args.get("size", 10.0))
@@ -168,12 +206,50 @@ def _build_primitive(coll: bpy.types.Collection, primitive: Primitive, transform
 
 
 def _compose_boolean(base: bpy.types.Object, other: bpy.types.Object, kind: str) -> bpy.types.Object:
+  if kind == "hull":
+    # 1. Copia o obj base + target pra Meshes temporarios aplicando os modifiers  
+    depsgraph = bpy.context.evaluated_depsgraph_get()
+    
+    base_eval = base.evaluated_get(depsgraph)
+    me_a = bpy.data.meshes.new_from_object(base_eval)
+    other_eval = other.evaluated_get(depsgraph)
+    me_b = bpy.data.meshes.new_from_object(other_eval)
+    
+    # 2. Fundir vertices no espaco global numa base limpa
+    bm = bmesh.new()
+    bm.from_mesh(me_a)
+    bmesh.ops.transform(bm, matrix=base.matrix_world, verts=bm.verts)
+    
+    bm_b = bmesh.new()
+    bm_b.from_mesh(me_b)
+    bmesh.ops.transform(bm_b, matrix=other.matrix_world, verts=bm_b.verts)
+    
+    for v in bm_b.verts:
+      bm.verts.new(v.co)
+    bm_b.free()
+    
+    # 3. Criar Convex Hull
+    bmesh.ops.convex_hull(bm, kdop_margin=0.0)
+    
+    # Mapear de volta matriz de origem
+    bmesh.ops.transform(bm, matrix=base.matrix_world.inverted(), verts=bm.verts)
+    bm.to_mesh(base.data)
+    bm.free()
+    bpy.data.meshes.remove(me_a)
+    bpy.data.meshes.remove(me_b)
+    
+    # Limpar modifiers se existirem (agora é poligonal purista)
+    for mod in base.modifiers:
+        base.modifiers.remove(mod)
+
+    other.hide_set(True)
+    other.hide_render = True
+    return base
+
   op_map = {
     "union": "UNION",
     "difference": "DIFFERENCE",
     "intersection": "INTERSECT",
-    # Fallback aproximado para manter fluxo funcional no Blender.
-    "hull": "UNION",
     "minkowski": "UNION",
   }
   mod = base.modifiers.new(name=f"OpenSCAD_{kind}", type="BOOLEAN")
@@ -265,6 +341,17 @@ def _build_eval_item(coll, item):
           bpy.ops.wm.obj_import(filepath=path)
         elif path_lower.endswith(".3mf"):
           bpy.ops.import_mesh.threemf(filepath=path)
+        elif path_lower.endswith(".svg"):
+          # SVG carrega colecoes de curvas ao inves de uma variavel obj_import fixa.
+          # Vamos isolar para retornar o primeiro mesh convertido.
+          bpy.ops.object.select_all(action='DESELECT')
+          bpy.ops.import_curve.svg(filepath=path)
+          imported_curves = bpy.context.selected_objects
+          if imported_curves:
+            bpy.context.view_layer.objects.active = imported_curves[0]
+            bpy.ops.object.convert(target='MESH')
+            if len(imported_curves) > 1:
+              bpy.ops.object.join()
         else:
           return None
         obj = bpy.context.active_object

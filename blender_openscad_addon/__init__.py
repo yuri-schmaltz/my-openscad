@@ -8,27 +8,36 @@ bl_info = {
   "category": "Import-Export",
 }
 
-from . import preferences
 from . import properties
-from .operators import import_scad, preview_scad, render_scad, export_scad
-from .ui import panels
+from .ui import panels, syntax_highlighter
+from .operators import import_scad, export_scad, preview_scad, render_scad
 
+import bpy
+
+classes = (
+    properties.OpenSCADBridgeProperties,
+)
 
 def register():
-  preferences.register()
-  properties.register()
-  import_scad.register()
-  preview_scad.register()
-  render_scad.register()
-  export_scad.register()
-  panels.register()
-
+    for cls in classes:
+        bpy.utils.register_class(cls)
+    bpy.types.Scene.openscad_bridge = bpy.props.PointerProperty(type=properties.OpenSCADBridgeProperties)
+    
+    panels.register()
+    syntax_highlighter.register()
+    import_scad.register()
+    export_scad.register()
+    preview_scad.register()
+    render_scad.register()
 
 def unregister():
-  panels.unregister()
-  export_scad.unregister()
-  render_scad.unregister()
-  preview_scad.unregister()
-  import_scad.unregister()
-  properties.unregister()
-  preferences.unregister()
+    render_scad.unregister()
+    preview_scad.unregister()
+    export_scad.unregister()
+    import_scad.unregister()
+    syntax_highlighter.unregister()
+    panels.unregister()
+    
+    del bpy.types.Scene.openscad_bridge
+    for cls in reversed(classes):
+        bpy.utils.unregister_class(cls)

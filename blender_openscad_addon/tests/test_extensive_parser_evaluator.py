@@ -132,15 +132,17 @@ class TestEvaluatorExtensive(unittest.TestCase):
     self.assertIn("sphere", kinds)
     self.assertNotIn("cube", kinds)
 
-  def test_text_and_import_eval_nodes(self):
-    src = 'text("oi", size=3); import("/tmp/a.stl");'
+  def test_text_import_and_polyhedron_eval_nodes(self):
+    src = 'text("oi", size=3); import("/tmp/a.svg"); polyhedron(points=[[0,0,0],[1,0,0],[0,1,0],[0,0,1]], faces=[[0,1,2],[0,1,3],[1,2,3],[0,2,3]]);'
     items = _flatten(_eval_source(src))
     node_types = [it.node_type for it in items]
     self.assertIn("primitive", node_types)
     self.assertIn("import", node_types)
+    self.assertIn("polyhedron", node_types)
     prim_kinds = [it.primitive.kind for it in items if it.primitive is not None]
     self.assertIn("text", prim_kinds)
     self.assertIn("import", prim_kinds)
+    self.assertIn("polyhedron", prim_kinds)
 
   def test_transforms_include_mirror_resize_multmatrix(self):
     src = (

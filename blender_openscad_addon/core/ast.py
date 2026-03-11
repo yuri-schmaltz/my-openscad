@@ -177,6 +177,12 @@ class Polygon(Node):
   points: Any
   paths: Any = None
 
+@dataclass
+class Polyhedron(Node):
+  points: Any
+  faces: Any
+  convexity: Any = None
+
 
 @dataclass
 class Circle(Node):

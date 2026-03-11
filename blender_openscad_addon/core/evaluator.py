@@ -27,6 +27,7 @@ from .ast import (
   Multmatrix,
   Offset,
   Polygon,
+  Polyhedron,
   Primitive,
   Program,
   Projection,
@@ -705,6 +706,20 @@ def _eval_node(node, ctx: EvalContext, transform_chain=None, color=None):
       node_type="polygon",
       transform_chain=transform_chain,
       primitive=Primitive(kind="polygon", args={"points": points, "paths": node.paths}),
+      color=color,
+    )
+
+  if isinstance(node, Polyhedron):
+    points = _resolve_value(node.points, ctx.variables, ctx) if node.points is not None else []
+    faces = _resolve_value(node.faces, ctx.variables, ctx) if node.faces is not None else []
+    if not isinstance(points, list):
+      points = []
+    if not isinstance(faces, list):
+      faces = []
+    return EvalItem(
+      node_type="polyhedron",
+      transform_chain=transform_chain,
+      primitive=Primitive(kind="polyhedron", args={"points": points, "faces": faces, "convexity": node.convexity}),
       color=color,
     )
 
