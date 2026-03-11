@@ -11,19 +11,19 @@ bl_info = {
 from . import preferences  # type: ignore
 from . import properties  # type: ignore
 from .ui import panels, syntax_highlighter  # type: ignore
-from .operators import import_scad, export_scad, preview_scad, render_scad  # type: ignore
+from .operators import import_scad, export_scad, preview_scad, render_scad, quick_insert  # type: ignore
 
 import bpy  # type: ignore
 
 classes = (
-    properties.OpenSCADBridgeProperties,
+    properties.OpenSCADAddonProperties,
 )
 
 def register():
     preferences.register()
     for cls in classes:
         bpy.utils.register_class(cls)
-    bpy.types.Scene.openscad_bridge = bpy.props.PointerProperty(type=properties.OpenSCADBridgeProperties)
+    bpy.types.Scene.openscad_bridge = bpy.props.PointerProperty(type=properties.OpenSCADAddonProperties)
     
     panels.register()
     syntax_highlighter.register()

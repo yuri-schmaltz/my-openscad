@@ -14,13 +14,26 @@ class OPENSCAD_OT_preview(bpy.types.Operator):
 
   def execute(self, context):
     props = context.scene.openscad_bridge
-    if not props.text_block_name:
-      self.report({"ERROR"}, "Defina um bloco de texto SCAD")
-      return {"CANCELLED"}
+    text_name = props.text_block_name
 
-    text = bpy.data.texts.get(props.text_block_name)
-    if text is None:
-      self.report({"ERROR"}, "Text datablock nao encontrado")
+    source = ""
+    if text_name:
+      text = bpy.data.texts.get(text_name)
+      if text:
+        source = text.as_string()
+      else:
+        self.report({"WARNING"}, f"Text datablock '{text_name}' nao encontrado.")
+    
+    if not source and props.source_path:
+      try:
+        with open(props.source_path, "r", encoding="utf-8") as f:
+          source = f.read()
+      except Exception as e:
+        self.report({"ERROR"}, f"Falha ao ler o arquivo: {e}")
+        return {"CANCELLED"}
+        
+    if not source:
+      self.report({"WARNING"}, "Nenhum arquivo/texto valido para gerar OpenSCAD.")
       return {"CANCELLED"}
 
     source = text.as_string()

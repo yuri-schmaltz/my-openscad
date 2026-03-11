@@ -17,8 +17,12 @@ class OPENSCAD_PT_bridge_panel(bpy.types.Panel):
     # I/O Box
     box = layout.box()
     box.label(text="I/O Settings", icon='FILE_FOLDER')
+    
     col = box.column(align=True)
-    col.prop(props, "text_block_name", icon='TEXT')
+    row = col.row(align=True)
+    row.prop(props, "text_block_name", icon='TEXT')
+    row.operator("openscad_bridge.quick_insert", text="", icon='GREASEPENCIL')
+    
     col.prop(props, "source_path", icon='FILE_SCRIPT')
     
     # Build Settings Box
