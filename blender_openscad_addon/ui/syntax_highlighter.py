@@ -1,6 +1,6 @@
-import bpy
+import bpy  # type: ignore
 import re
-from bpy.app.handlers import persistent
+from bpy.app.handlers import persistent  # type: ignore
 
 # Cores tema para OpenSCAD
 SCAD_KEYWORDS = {

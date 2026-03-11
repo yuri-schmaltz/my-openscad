@@ -1,11 +1,11 @@
 from __future__ import annotations
 
 import math
-import bmesh
-import bpy
+import bmesh  # type: ignore
+import bpy  # type: ignore
 from math import radians, pi, cos, sin
 
-from .ast import Primitive
+from .ast import Primitive  # type: ignore
 
 
 PREVIEW_COLLECTION_NAME = "OpenSCAD Preview"
@@ -53,7 +53,7 @@ def _apply_transform_chain(obj: bpy.types.Object, chain: list[tuple[str, list[fl
       obj.scale.y = values[1] if values[1] != 0 else obj.scale.y
       obj.scale.z = values[2] if values[2] != 0 else obj.scale.z
     elif kind == "multmatrix" and isinstance(values, list) and len(values) >= 4:
-      import mathutils
+      import mathutils  # type: ignore
       rows = values
       m = mathutils.Matrix([
         [float(rows[0][0]), float(rows[0][1]), float(rows[0][2]), float(rows[0][3])],
@@ -162,13 +162,13 @@ def _build_primitive(coll: bpy.types.Collection, primitive: Primitive, transform
       if isinstance(face_indices, (list, tuple)) and len(face_indices) >= 3:
         face_verts = []
         for idx in face_indices:
-          i = int(idx)
+          i = int(idx)  # type: ignore
           if 0 <= i < len(verts):
-            face_verts.append(verts[i])
+            face_verts.append(verts[i])  # type: ignore
         if len(face_verts) >= 3:
           try:
             bm.faces.new(face_verts)
-          except Exception:
+          except ValueError:
             pass  # Ignora self-intersecting faces repetidas
 
     # Limpar qualquer ponta solta para garantir validade    
@@ -380,7 +380,11 @@ def _build_eval_item(coll, item):
     if not objs:
       return None
     base = objs[0]
-    for other in objs[1:]:
+    
+    # Bypass linter estatico para sublistas tipadas em tempo_de_compilacao
+    others: list[bpy.types.Object] = objs[1:]  # type: ignore
+    
+    for other in others:
       base = _compose_boolean(base, other, item.boolean_kind or "union")
     return base
 
