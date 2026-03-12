@@ -353,12 +353,23 @@ def _build_eval_item(coll, item):
       base.select_set(True)
       bpy.ops.object.transform_apply(location=True, rotation=True, scale=True)
       
-      # Now apply the screw modifier around the origin
+      # Now we forcefully rotate the mesh vertices by 90 degrees on X
+      # so that the 2D plane (XY) aligns with XZ, making the Screw around Z work properly.
+      import bmesh
+      import mathutils
+      bm = bmesh.new()
+      bm.from_mesh(base.data)
+      rx90 = mathutils.Matrix.Rotation(math.radians(90.0), 4, 'X')
+      bmesh.ops.transform(bm, matrix=rx90, verts=bm.verts)
+      bm.to_mesh(base.data)
+      bm.free()
+      
+      # Now apply the screw modifier around the Z axis
       screw_mod = base.modifiers.new("OpenSCAD_RotExtrude", type="SCREW")
       screw_mod.angle = math.radians(angle)
       screw_mod.steps = steps
       screw_mod.iterations = 1
-      screw_mod.axis = 'Y'
+      screw_mod.axis = 'Z'
     if item.transform_chain:
       _apply_transform_chain(base, item.transform_chain)
     _apply_color(base, item.color)
