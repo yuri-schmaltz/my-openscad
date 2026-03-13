@@ -305,17 +305,26 @@ def _compose_boolean(base: bpy.types.Object, other: bpy.types.Object, kind: str)
 
 def _build_eval_item(coll, item):
   if item.node_type == "primitive" and item.primitive:
-    return _build_primitive(coll, item.primitive, item.transform_chain, item.color)
+    obj = _build_primitive(coll, item.primitive, item.transform_chain, item.color)
+    return [obj] if obj else []
   if item.node_type == "polygon" and item.primitive:
-    return _build_primitive(coll, item.primitive, item.transform_chain, item.color)
+    obj = _build_primitive(coll, item.primitive, item.transform_chain, item.color)
+    return [obj] if obj else []
 
   if item.node_type == "extrude" and item.primitive:
     kind = item.primitive.args.get("kind", item.primitive.kind)
     args = item.primitive.args
-    child_objs = [o for o in (_build_eval_item(coll, ch) for ch in item.children) if o is not None]
+    child_objs = []
+    for ch in item.children:
+      res = _build_eval_item(coll, ch)
+      if res:
+        child_objs.extend(res)
+    
     if not child_objs:
-      return None
-    base = child_objs[0] if len(child_objs) == 1 else child_objs[0]
+      return []
+    
+    # In OpenSCAD, extrude often unions its children if multiple
+    base = child_objs[0]
     # Join children if multiple
     if len(child_objs) > 1:
       bpy.ops.object.select_all(action='DESELECT')
@@ -324,6 +333,7 @@ def _build_eval_item(coll, item):
       bpy.context.view_layer.objects.active = child_objs[0]
       bpy.ops.object.join()
       base = bpy.context.active_object
+    
     if "linear_extrude" in kind or kind == "linear_extrude":
       height = float(args.get("height", args.get("arg0", 1.0)))
       bpy.ops.object.select_all(action='DESELECT')
@@ -373,26 +383,41 @@ def _build_eval_item(coll, item):
     if item.transform_chain:
       _apply_transform_chain(base, item.transform_chain)
     _apply_color(base, item.color)
-    return base
+    return [base]
 
   if item.node_type == "offset" and item.primitive:
-    child_objs = [o for o in (_build_eval_item(coll, ch) for ch in item.children) if o is not None]
+    child_objs = []
+    for ch in item.children:
+      res = _build_eval_item(coll, ch)
+      if res:
+        child_objs.extend(res)
+        
     if not child_objs:
-      return None
+      return []
+    
     base = child_objs[0]
+    # Rest of offset logic... (treating first child as base for now)
     r = float(item.primitive.args.get("r", 0.0))
     if r != 0.0:
       sol = base.modifiers.new("OpenSCAD_Offset", type="SOLIDIFY")
       sol.thickness = r
       sol.offset = 1.0
-    _apply_transform_chain(base, item.transform_chain)
+    
+    if item.transform_chain:
+      _apply_transform_chain(base, item.transform_chain)
     _apply_color(base, item.color)
-    return base
+    return [base]
 
   if item.node_type == "projection":
-    child_objs = [o for o in (_build_eval_item(coll, ch) for ch in item.children) if o is not None]
+    child_objs = []
+    for ch in item.children:
+      res = _build_eval_item(coll, ch)
+      if res:
+        child_objs.extend(res)
+        
     if not child_objs:
-      return None
+      return []
+    
     base = child_objs[0]
     _apply_transform_chain(base, item.transform_chain)
     _apply_color(base, item.color)
@@ -429,24 +454,29 @@ def _build_eval_item(coll, item):
           coll.objects.link(obj)
           _apply_transform_chain(obj, item.transform_chain)
           _apply_color(obj, item.color)
-          return obj
+          return [obj]
       except Exception:
         pass
-    return None
+    return []
 
 
   if item.node_type == "group":
-    created = None
+    created = []
     for child in item.children:
-      child_obj = _build_eval_item(coll, child)
-      if created is None:
-        created = child_obj
+      res = _build_eval_item(coll, child)
+      if res:
+        created.extend(res)
     return created
 
   if item.node_type == "boolean":
-    objs = [o for o in (_build_eval_item(coll, ch) for ch in item.children) if o is not None]
+    objs = []
+    for ch in item.children:
+      res = _build_eval_item(coll, ch)
+      if res:
+        objs.extend(res)
+        
     if not objs:
-      return None
+      return []
       
     base = objs[0]
     kind = item.boolean_kind or "union"
@@ -466,9 +496,9 @@ def _build_eval_item(coll, item):
       for other in others:
         base = _compose_boolean(base, other, "intersection")
         
-    return base
+    return [base]
 
-  return None
+  return []
 
 
 def build_scene(scene: bpy.types.Scene, eval_items) -> list[bpy.types.Object]:
@@ -476,7 +506,7 @@ def build_scene(scene: bpy.types.Scene, eval_items) -> list[bpy.types.Object]:
   coll = ensure_preview_collection(scene)
   created = []
   for item in eval_items:
-    obj = _build_eval_item(coll, item)
-    if obj is not None:
-      created.append(obj)
+    res = _build_eval_item(coll, item)
+    if res:
+      created.extend(res)
   return created
